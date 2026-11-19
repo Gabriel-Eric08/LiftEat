@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Database;
+use App\Core\Env;
 use App\Core\Request;
 use App\Core\Response;
 use Throwable;
@@ -35,10 +36,20 @@ final class HealthController
 
         $ok = $db === 'ok' && !in_array('sem permissão', $storage, true);
 
+        // Diagnóstico da página de instalação (nunca mostra o valor do token).
+        $token = (string) Env::get('INSTALL_TOKEN', '');
+        $install = match (true) {
+            $token === ''      => 'desativada (INSTALL_TOKEN vazio ou ausente)',
+            strlen($token) < 16 => 'token curto demais (mínimo 16 caracteres)',
+            default            => 'ativa (token com ' . strlen($token) . ' caracteres)',
+        };
+
         return Response::json([
             'status'  => $ok ? 'ok' : 'erro',
             'php'     => PHP_VERSION,
             'db'      => $db,
+            'env'     => Env::loaded() ? 'carregado' : 'arquivo .env não encontrado em ' . basename(BASE_PATH) . '/',
+            'install' => $install,
             'storage' => $storage,
             'https'   => $request->isSecure(),
         ], $ok ? 200 : 503);

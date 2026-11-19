@@ -12,19 +12,32 @@ final class Env
     /** @var array<string, string> */
     private static array $values = [];
 
+    private static bool $loaded = false;
+
+    /** O arquivo .env foi encontrado e lido? */
+    public static function loaded(): bool
+    {
+        return self::$loaded;
+    }
+
     public static function load(string $path): void
     {
         if (!is_file($path)) {
             return;
         }
 
-        foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+        self::$loaded = true;
+        $content = (string) file_get_contents($path);
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content; // BOM de editores Windows
+
+        foreach (preg_split('/\R/', $content) ?: [] as $line) {
             $line = trim($line);
             if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
                 continue;
             }
 
             [$key, $value] = array_map('trim', explode('=', $line, 2));
+            $key = preg_replace('/^export\s+/', '', $key) ?? $key;
 
             if (preg_match('/^(["\'])(.*)\1$/', $value, $m)) {
                 $value = $m[2];
