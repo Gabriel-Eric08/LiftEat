@@ -24,7 +24,7 @@ final class InstallController
     public function show(Request $request): Response
     {
         if (!$this->authorized($request)) {
-            return $this->notFound();
+            return $this->denied($request);
         }
 
         return $this->page($request);
@@ -102,7 +102,7 @@ final class InstallController
     private function action(Request $request, callable $fn): Response
     {
         if (!$this->authorized($request)) {
-            return $this->notFound();
+            return $this->denied($request);
         }
 
         try {
@@ -143,10 +143,52 @@ final class InstallController
 
     private function authorized(Request $request): bool
     {
-        $expected = (string) Env::get('INSTALL_TOKEN', '');
-        $given = (string) $request->input('token', '');
+        $expected = $this->expectedToken();
 
-        return strlen($expected) >= 16 && hash_equals($expected, $given);
+        return strlen($expected) >= 16 && hash_equals($expected, $this->givenToken($request));
+    }
+
+    private function expectedToken(): string
+    {
+        return trim((string) Env::get('INSTALL_TOKEN', ''));
+    }
+
+    private function givenToken(Request $request): string
+    {
+        $token = $request->input('token', '');
+
+        return is_string($token) ? trim($token) : '';
+    }
+
+    /**
+     * Página desligada (sem token no .env) -> 404, como se não existisse.
+     * Página ligada mas token errado -> 403 explicando, para facilitar o diagnóstico.
+     * O token tem 48 caracteres aleatórios, então revelar que a página existe não o torna adivinhável.
+     */
+    private function denied(Request $request): Response
+    {
+        $expected = $this->expectedToken();
+        if (strlen($expected) < 16) {
+            return $this->notFound();
+        }
+
+        $given = $this->givenToken($request);
+        $detail = $given === ''
+            ? 'Nenhum token chegou na URL. O endereço precisa terminar com ?token=SEU_TOKEN.'
+            : sprintf(
+                'O token da URL (%d caracteres) não confere com o do .env (%d caracteres).%s',
+                strlen($given),
+                strlen($expected),
+                strlen($given) === strlen($expected) ? ' O tamanho é igual, então algum caractere está diferente.' : '',
+            );
+
+        return Response::html(
+            '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex">'
+            . '<body style="font-family:system-ui;background:#070807;color:#eef1ee;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px">'
+            . '<div style="max-width:440px"><h1 style="margin:0 0 8px">Token inválido</h1>'
+            . '<p style="color:#9aa29a;line-height:1.5">' . e($detail) . '</p></div></body>',
+            403,
+        )->withHeader('X-Robots-Tag', 'noindex');
     }
 
     private function migrator(): Migrator
