@@ -55,6 +55,15 @@
 
     window.addEventListener('pageshow', endProgress);
 
+    // Remove marcadores técnicos da URL (ex.: ?entrou=1 após o login) sem recarregar.
+    {
+        const url = new URL(location.href);
+        if (url.searchParams.has('entrou')) {
+            url.searchParams.delete('entrou');
+            history.replaceState(null, '', url.pathname + url.search + url.hash);
+        }
+    }
+
     // Transição entre páginas (CSS @view-transition): se for interrompida, não gera erro.
     window.addEventListener('pagereveal', (e) => {
         const vt = e.viewTransition;

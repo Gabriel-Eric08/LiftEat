@@ -79,6 +79,23 @@
                 <?php endif ?>
             </section>
 
+            <section class="card stack">
+                <div class="row-between"><h2>4. Diagnóstico de login</h2><span class="muted"><?= icon('shield-alert', '', 18) ?></span></div>
+                <?php if ($clock): ?>
+                    <p class="xsmall muted">Relógio PHP: <span class="mono"><?= e($clock['php']) ?></span> · MySQL: <span class="mono"><?= e($clock['db']) ?></span></p>
+                <?php endif ?>
+                <?php if ($authLog): ?>
+                    <div class="error-debug" style="max-height:260px"><?php foreach ($authLog as $line): ?><?= e($line) ?>
+<?php endforeach ?></div>
+                <?php else: ?>
+                    <p class="small muted">Nenhuma tentativa de login registrada ainda.</p>
+                <?php endif ?>
+                <form method="post" action="/install/desbloquear">
+                    <input type="hidden" name="token" value="<?= e($token) ?>">
+                    <button type="submit" class="btn btn-outline btn-block"><?= icon('lock', '', 16) ?><span>Desbloquear logins (apagar tentativas com erro)</span></button>
+                </form>
+            </section>
+
             <p class="xsmall muted center">Terminou? Remova <code class="mono">INSTALL_TOKEN</code> do <code class="mono">.env</code> para desativar esta página.</p>
         <?php endif ?>
     <?php endif ?>

@@ -98,6 +98,15 @@ final class InstallController
         });
     }
 
+    public function unlock(Request $request): Response
+    {
+        return $this->action($request, function (): string {
+            $n = Database::execute('DELETE FROM login_attempts WHERE succeeded = 0');
+
+            return "Logins desbloqueados ({$n} tentativas com erro apagadas).";
+        });
+    }
+
     /** Executa uma ação protegida pelo token e mostra o resultado na página. */
     private function action(Request $request, callable $fn): Response
     {
@@ -129,7 +138,21 @@ final class InstallController
             $dbError = $e->getMessage();
         }
 
+        $authLog = [];
+        $logFile = BASE_PATH . '/storage/logs/auth.log';
+        if (is_file($logFile)) {
+            $authLog = array_reverse(array_slice(file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [], -25));
+        }
+
+        $clock = null;
+        try {
+            $clock = ['php' => date('Y-m-d H:i:s'), 'db' => (string) Database::select('SELECT NOW() AS n')[0]['n']];
+        } catch (Throwable) {
+        }
+
         return Response::html(View::render('install', [
+            'authLog' => $authLog,
+            'clock'   => $clock,
             'title'   => 'Instalação',
             'token'   => (string) $request->input('token', ''),
             'pending' => $pending,

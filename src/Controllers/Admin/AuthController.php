@@ -21,7 +21,7 @@ final class AuthController
             'subtitle'         => 'Seus alunos, treinos e faturamento em um só lugar.',
             'action'           => '/admin/login',
             'emailPlaceholder' => 'voce@seudominio.com',
-            'error'            => flash('login_error'),
+            'error'            => $this->loginError($request),
             'foot'             => 'É aluno? <a href="/app/login">Acesse o app</a>',
         ], 'layouts/blank');
     }

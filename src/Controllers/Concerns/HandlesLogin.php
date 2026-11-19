@@ -40,7 +40,19 @@ trait HandlesLogin
 
         Session::flash('success', 'Bem-vindo de volta, ' . first_name($user['name']) . '!');
 
-        return redirect($homeUrl);
+        // "?entrou=1" permite detectar, na página seguinte, se o navegador perdeu a sessão.
+        return redirect($homeUrl . '?entrou=1');
+    }
+
+    /** Mensagem de erro da tela de login (tentativa anterior ou sessão perdida). */
+    private function loginError(Request $request): ?string
+    {
+        if ($request->query('erro') === 'sessao') {
+            return 'Seu login foi aceito, mas o navegador não guardou a sessão. '
+                . 'Verifique se os cookies estão permitidos para este site (e se não está em modo que bloqueia cookies) e tente de novo.';
+        }
+
+        return flash('login_error');
     }
 
     private function loginFailed(Request $request, string $loginUrl, string $message): Response

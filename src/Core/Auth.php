@@ -11,7 +11,7 @@ namespace App\Core;
 final class Auth
 {
     private const MAX_FAILS_PER_EMAIL = 5;
-    private const MAX_FAILS_PER_IP = 20;
+    private const MAX_FAILS_PER_IP = 40; // alto: na hospedagem compartilhada vários acessos podem chegar pelo mesmo IP de proxy
     private const WINDOW_MINUTES = 15;
 
     /** @var array<string, array<string, mixed>|null> */
@@ -25,7 +25,13 @@ final class Auth
     public static function attempt(string $guard, string $email, string $password, string $ip): ?array
     {
         $email = mb_strtolower(trim($email));
-        self::guardAgainstBruteForce($email, $ip);
+
+        try {
+            self::guardAgainstBruteForce($email, $ip);
+        } catch (HttpException $e) {
+            Log::auth($guard, $email, $ip, 'BLOQUEADO: muitas tentativas recentes');
+            throw $e;
+        }
 
         $table = $guard === 'admin' ? 'admins' : 'students';
         $extra = $guard === 'student' ? ' AND deleted_at IS NULL' : '';
@@ -35,14 +41,19 @@ final class Auth
         $hash = $user['password_hash'] ?? '$2y$12$xbipGey2W5WrvBUF1avxde78uCIrxkDE/u5Wor3g4RdR8eQVBN6jO';
         $ok = password_verify($password, $hash) && $user !== null;
 
+        // Horário vem do PHP (não do DEFAULT do MySQL) para a janela de bloqueio usar um relógio só.
         Database::execute(
-            'INSERT INTO login_attempts (email, ip_address, succeeded) VALUES (?, ?, ?)',
-            [$email, $ip, $ok ? 1 : 0],
+            'INSERT INTO login_attempts (email, ip_address, succeeded, attempted_at) VALUES (?, ?, ?, ?)',
+            [$email, $ip, $ok ? 1 : 0, date('Y-m-d H:i:s')],
         );
 
         if (!$ok) {
+            Log::auth($guard, $email, $ip, $user === null ? 'FALHOU: e-mail não cadastrado' : 'FALHOU: senha incorreta');
+
             return null;
         }
+
+        Log::auth($guard, $email, $ip, 'OK: credenciais válidas, sessão ' . substr(hash('sha256', (string) session_id()), 0, 8));
 
         if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
             Database::execute(
@@ -122,14 +133,26 @@ final class Auth
     private static function guardAgainstBruteForce(string $email, string $ip): void
     {
         $since = date('Y-m-d H:i:s', time() - self::WINDOW_MINUTES * 60);
+        // Limite superior: ignora registros "no futuro" gravados quando o MySQL estava em outro fuso.
+        $until = date('Y-m-d H:i:s', time() + 120);
 
+        // Faxina ocasional: tentativas com mais de 2 dias não servem para nada.
+        if (random_int(1, 20) === 1) {
+            Database::execute('DELETE FROM login_attempts WHERE attempted_at < ?', [date('Y-m-d H:i:s', time() - 172800)]);
+        }
+
+        // Só falhas desde o último login bem-sucedido daquele e-mail contam.
         $row = Database::select(
             'SELECT
                 COALESCE(SUM(email = ?), 0)      AS by_email,
                 COALESCE(SUM(ip_address = ?), 0) AS by_ip
              FROM login_attempts
-             WHERE succeeded = 0 AND attempted_at >= ? AND (email = ? OR ip_address = ?)',
-            [$email, $ip, $since, $email, $ip],
+             WHERE succeeded = 0 AND attempted_at BETWEEN ? AND ? AND (email = ? OR ip_address = ?)
+               AND attempted_at > COALESCE(
+                   (SELECT MAX(ok.attempted_at) FROM login_attempts ok WHERE ok.email = ? AND ok.succeeded = 1 AND ok.attempted_at <= ?),
+                   \'1970-01-01\'
+               )',
+            [$email, $ip, $since, $until, $email, $ip, $email, $until],
         )[0] ?? [];
 
         if ((int) ($row['by_email'] ?? 0) >= self::MAX_FAILS_PER_EMAIL || (int) ($row['by_ip'] ?? 0) >= self::MAX_FAILS_PER_IP) {

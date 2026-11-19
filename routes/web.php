@@ -24,6 +24,7 @@ return static function (Router $router): void {
     $router->post('/install/admin', [InstallController::class, 'createAdmin']);
     $router->post('/install/demo', [InstallController::class, 'seed']);
     $router->post('/install/demo/remover', [InstallController::class, 'unseed']);
+    $router->post('/install/desbloquear', [InstallController::class, 'unlock']);
 
     /* ---------------- Painel do personal ---------------- */
     $router->group('/admin', [AdminGuest::class], static function (Router $r): void {

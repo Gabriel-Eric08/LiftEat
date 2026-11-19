@@ -32,13 +32,42 @@ final class App
         try {
             $response = $this->handle($request);
         } catch (HttpException $e) {
-            $response = ErrorPage::response($e->status, $request, $e->getMessage(), $e->headers);
+            $response = $e->status === 419 && !$request->wantsJson()
+                ? $this->expiredForm($request)
+                : ErrorPage::response($e->status, $request, $e->getMessage(), $e->headers);
         } catch (Throwable $e) {
             $this->log($e);
             $response = ErrorPage::response(500, $request, '', [], $this->config['app']['debug'] ? $e : null);
         }
 
-        $response->send();
+        // Páginas dinâmicas nunca devem ir para cache (proxy/CDN da hospedagem ou navegador):
+        // uma página de login em cache carrega um token CSRF de outra sessão e o login falha.
+        $response
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+            ->withHeader('Pragma', 'no-cache')
+            ->send();
+    }
+
+    /**
+     * Formulário com token CSRF vencido (aba aberta há muito tempo, sessão renovada...):
+     * em vez de uma tela de erro, volta para a página com um aviso e um token novo.
+     */
+    private function expiredForm(Request $request): Response
+    {
+        $path = $request->path();
+        $isLogin = in_array(rtrim($path, '/'), ['/admin/login', '/app/login'], true);
+
+        if ($isLogin) {
+            Log::auth(str_starts_with($path, '/admin') ? 'admin' : 'student', $request->string('email'), $request->ip(), 'FALHOU: token do formulário inválido (página antiga ou cookie de sessão não recebido)');
+            Session::flashInput(['email' => $request->string('email')]);
+            Session::flash('login_error', 'A página de login estava desatualizada. Tente entrar de novo.');
+
+            return Response::redirect($path);
+        }
+
+        Session::flash('error', 'O formulário expirou. Confira os dados e envie de novo.');
+
+        return back(str_starts_with($path, '/admin') ? '/admin' : '/app');
     }
 
     private function handle(Request $request): Response

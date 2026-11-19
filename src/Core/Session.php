@@ -22,13 +22,19 @@ final class Session
             mkdir($path, 0700, true);
         }
 
+        // Configuração explícita: não depende do que a hospedagem definiu no php.ini global.
+        ini_set('session.save_handler', 'files');
         session_save_path($path);
         session_name('lifteat_session');
         ini_set('session.gc_maxlifetime', (string) self::LIFETIME);
         ini_set('session.use_strict_mode', '1');
+        ini_set('session.use_only_cookies', '1');
+        ini_set('session.use_trans_sid', '0');
+        ini_set('session.cache_limiter', 'nocache');
         session_set_cookie_params([
             'lifetime' => self::LIFETIME,
             'path'     => '/',
+            'domain'   => '',
             'secure'   => $secure,
             'httponly' => true,
             'samesite' => 'Lax',

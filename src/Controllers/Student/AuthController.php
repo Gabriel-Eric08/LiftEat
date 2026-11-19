@@ -21,7 +21,7 @@ final class AuthController
             'subtitle'         => 'Entre para ver seu treino e sua dieta de hoje.',
             'action'           => '/app/login',
             'emailPlaceholder' => 'seu@email.com',
-            'error'            => flash('login_error'),
+            'error'            => $this->loginError($request),
             'foot'             => 'Esqueceu a senha? Fale com seu personal.',
         ], 'layouts/blank');
     }
