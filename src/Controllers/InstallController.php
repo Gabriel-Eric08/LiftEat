@@ -10,10 +10,11 @@ use App\Core\Migrator;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
+use App\Services\DemoSeeder;
 use Throwable;
 
 /**
- * Instalação/atualização do banco pela web (a hospedagem não tem SSH).
+ * Instalação/manutenção do banco pela web (a hospedagem não tem SSH).
  *
  * Só funciona se INSTALL_TOKEN estiver definido no .env; sem ele a rota responde 404.
  * Acesso: /install?token=SEU_TOKEN
@@ -31,79 +32,112 @@ final class InstallController
 
     public function migrate(Request $request): Response
     {
+        return $this->action($request, function (): string {
+            $done = $this->migrator()->migrate();
+
+            return $done === [] ? 'Nenhuma migração pendente.' : 'Aplicadas: ' . implode(', ', $done);
+        });
+    }
+
+    public function createAdmin(Request $request): Response
+    {
+        return $this->action($request, function () use ($request): string {
+            $name = trim((string) $request->input('name', ''));
+            $email = mb_strtolower(trim((string) $request->input('email', '')));
+            $password = (string) $request->input('password', '');
+
+            $errors = [];
+            if ($name === '') {
+                $errors[] = 'Informe o nome.';
+            }
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'E-mail inválido.';
+            }
+            if (mb_strlen($password) < 8) {
+                $errors[] = 'A senha precisa ter pelo menos 8 caracteres.';
+            }
+            if ($errors === [] && Database::select('SELECT id FROM admins WHERE email = ?', [$email]) !== []) {
+                $errors[] = 'Já existe um administrador com esse e-mail.';
+            }
+            if ($errors !== []) {
+                throw new \InvalidArgumentException(implode(' ', $errors));
+            }
+
+            Database::execute(
+                'INSERT INTO admins (name, email, password_hash) VALUES (?, ?, ?)',
+                [$name, $email, password_hash($password, PASSWORD_DEFAULT)],
+            );
+            // Libera o e-mail caso tenha sido bloqueado por tentativas erradas.
+            Database::execute('DELETE FROM login_attempts WHERE email = ?', [$email]);
+
+            return "Administrador {$email} criado. Entre em /admin/login.";
+        });
+    }
+
+    public function seed(Request $request): Response
+    {
+        return $this->action($request, function (): string {
+            $r = DemoSeeder::seed();
+
+            return sprintf(
+                'Dados de teste inseridos: %d alunos, %d mensalidades e %d treinos realizados. Senha dos alunos: %s',
+                $r['students'],
+                $r['payments'],
+                $r['sessions'],
+                DemoSeeder::PASSWORD,
+            );
+        });
+    }
+
+    public function unseed(Request $request): Response
+    {
+        return $this->action($request, function (): string {
+            $n = DemoSeeder::remove();
+
+            return $n === 0 ? 'Não havia dados de teste.' : "Dados de teste removidos ({$n} alunos).";
+        });
+    }
+
+    /** Executa uma ação protegida pelo token e mostra o resultado na página. */
+    private function action(Request $request, callable $fn): Response
+    {
         if (!$this->authorized($request)) {
             return $this->notFound();
         }
 
         try {
-            $done = $this->migrator()->migrate();
-            $message = $done === []
-                ? 'Nenhuma migração pendente.'
-                : 'Aplicadas: ' . implode(', ', $done);
-
-            return $this->page($request, success: $message);
+            return $this->page($request, success: $fn());
         } catch (Throwable $e) {
             return $this->page($request, error: $e->getMessage());
         }
     }
 
-    public function createAdmin(Request $request): Response
-    {
-        if (!$this->authorized($request)) {
-            return $this->notFound();
-        }
-
-        if ($this->adminExists()) {
-            return $this->page($request, error: 'Já existe um administrador cadastrado.');
-        }
-
-        $name = trim((string) $request->input('name', ''));
-        $email = mb_strtolower(trim((string) $request->input('email', '')));
-        $password = (string) $request->input('password', '');
-
-        $errors = [];
-        if ($name === '') {
-            $errors[] = 'Informe o nome.';
-        }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'E-mail inválido.';
-        }
-        if (mb_strlen($password) < 8) {
-            $errors[] = 'A senha precisa ter pelo menos 8 caracteres.';
-        }
-        if ($errors !== []) {
-            return $this->page($request, error: implode(' ', $errors));
-        }
-
-        Database::execute(
-            'INSERT INTO admins (name, email, password_hash) VALUES (?, ?, ?)',
-            [$name, $email, password_hash($password, PASSWORD_DEFAULT)],
-        );
-
-        return $this->page($request, success: 'Administrador criado. Agora remova INSTALL_TOKEN do .env.');
-    }
-
     private function page(Request $request, ?string $success = null, ?string $error = null): Response
     {
         $pending = [];
-        $adminExists = false;
+        $admins = [];
+        $demo = false;
         $dbError = null;
 
         try {
             $pending = $this->migrator()->pending();
-            $adminExists = $pending === [] && $this->adminExists();
+            if ($pending === []) {
+                $admins = Database::select('SELECT name, email, last_login_at FROM admins ORDER BY id');
+                $demo = DemoSeeder::exists();
+            }
         } catch (Throwable $e) {
             $dbError = $e->getMessage();
         }
 
         return Response::html(View::render('install', [
-            'title'       => 'Instalação',
-            'token'       => (string) $request->input('token', ''),
-            'pending'     => $pending,
-            'adminExists' => $adminExists,
-            'dbError'     => $dbError,
-            'success'     => $success,
-            'error'       => $error,
+            'title'   => 'Instalação',
+            'token'   => (string) $request->input('token', ''),
+            'pending' => $pending,
+            'admins'  => $admins,
+            'demo'    => $demo,
+            'dbError' => $dbError,
+            'success' => $success,
+            'error'   => $error,
         ], 'layouts/blank'))->withHeader('X-Robots-Tag', 'noindex');
     }
 
@@ -113,11 +147,6 @@ final class InstallController
         $given = (string) $request->input('token', '');
 
         return strlen($expected) >= 16 && hash_equals($expected, $given);
-    }
-
-    private function adminExists(): bool
-    {
-        return (int) Database::connection()->query('SELECT COUNT(*) FROM admins')->fetchColumn() > 0;
     }
 
     private function migrator(): Migrator
