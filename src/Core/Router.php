@@ -4,13 +4,22 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use Closure;
+
 /**
- * Roteador simples com suporte a parâmetros: /usuarios/{id}
+ * Roteador com parâmetros (/alunos/{id}), grupos e middlewares.
+ *
+ * Middleware = classe com handle(Request $request, Closure $next): Response.
  */
 final class Router
 {
-    /** @var array<string, array<string, callable|array{class-string, string}>> */
+    /** @var list<array{method: string, pattern: string, handler: callable|array, middleware: list<class-string>}> */
     private array $routes = [];
+
+    private string $prefix = '';
+
+    /** @var list<class-string> */
+    private array $middleware = [];
 
     public function get(string $path, callable|array $handler): void
     {
@@ -22,47 +31,67 @@ final class Router
         $this->add('POST', $path, $handler);
     }
 
-    public function put(string $path, callable|array $handler): void
+    /** @param list<class-string> $middleware */
+    public function group(string $prefix, array $middleware, Closure $routes): void
     {
-        $this->add('PUT', $path, $handler);
-    }
+        [$prevPrefix, $prevMiddleware] = [$this->prefix, $this->middleware];
 
-    public function delete(string $path, callable|array $handler): void
-    {
-        $this->add('DELETE', $path, $handler);
+        $this->prefix .= $prefix;
+        $this->middleware = [...$this->middleware, ...$middleware];
+        $routes($this);
+
+        [$this->prefix, $this->middleware] = [$prevPrefix, $prevMiddleware];
     }
 
     public function add(string $method, string $path, callable|array $handler): void
     {
-        $this->routes[strtoupper($method)][$this->normalize($path)] = $handler;
+        $this->routes[] = [
+            'method'     => strtoupper($method),
+            'pattern'    => $this->normalize($this->prefix . $path),
+            'handler'    => $handler,
+            'middleware' => $this->middleware,
+        ];
     }
 
     public function dispatch(Request $request): Response
     {
         $path = $this->normalize($request->path());
+        $method = $request->method() === 'HEAD' ? 'GET' : $request->method();
         $allowed = [];
 
-        foreach ($this->routes as $method => $routes) {
-            foreach ($routes as $pattern => $handler) {
-                $params = $this->match($pattern, $path);
-                if ($params === null) {
-                    continue;
-                }
-                if ($method !== $request->method()) {
-                    $allowed[] = $method;
-                    continue;
-                }
-
-                return $this->call($handler, $request, $params);
+        foreach ($this->routes as $route) {
+            $params = $this->match($route['pattern'], $path);
+            if ($params === null) {
+                continue;
             }
+            if ($route['method'] !== $method) {
+                $allowed[] = $route['method'];
+                continue;
+            }
+
+            return $this->run($route, $request, $params);
         }
 
         if ($allowed !== []) {
-            return Response::json(['error' => 'Método não permitido'], 405)
-                ->withHeader('Allow', implode(', ', array_unique($allowed)));
+            throw new HttpException(405, '', ['Allow' => implode(', ', array_unique($allowed))]);
         }
 
-        return Response::html('<h1>404</h1><p>Página não encontrada.</p>', 404);
+        throw new HttpException(404);
+    }
+
+    /**
+     * @param array{handler: callable|array, middleware: list<class-string>} $route
+     * @param array<string, string> $params
+     */
+    private function run(array $route, Request $request, array $params): Response
+    {
+        $next = fn (Request $r): Response => $this->call($route['handler'], $r, $params);
+
+        foreach (array_reverse($route['middleware']) as $class) {
+            $next = static fn (Request $r): Response => (new $class())->handle($r, $next);
+        }
+
+        return $next($request);
     }
 
     /** @return array<string, string>|null */

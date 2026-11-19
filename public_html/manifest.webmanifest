@@ -1,0 +1,13 @@
+{
+    "name": "LiftEat",
+    "short_name": "LiftEat",
+    "description": "Seus treinos e sua dieta, direto do seu personal.",
+    "lang": "pt-BR",
+    "start_url": "/app",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#070807",
+    "theme_color": "#070807",
+    "icons": []
+}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Services\Billing;
 use Throwable;
 
 final class App
@@ -26,13 +27,41 @@ final class App
 
     public function run(): void
     {
+        $request = Request::fromGlobals();
+
         try {
-            $response = $this->router->dispatch(Request::fromGlobals());
+            $response = $this->handle($request);
+        } catch (HttpException $e) {
+            $response = ErrorPage::response($e->status, $request, $e->getMessage(), $e->headers);
         } catch (Throwable $e) {
-            $response = $this->handleException($e);
+            $this->log($e);
+            $response = ErrorPage::response(500, $request, '', [], $this->config['app']['debug'] ? $e : null);
         }
 
         $response->send();
+    }
+
+    private function handle(Request $request): Response
+    {
+        $path = $request->path();
+        $isInfra = $path === '/health' || str_starts_with($path, '/install');
+
+        if (!$isInfra) {
+            Session::start($request->isSecure());
+
+            if (!in_array($request->method(), ['GET', 'HEAD', 'OPTIONS'], true)) {
+                Csrf::verify($request);
+            }
+
+            // Renovações automáticas rodam no máximo uma vez por dia, na primeira visita.
+            try {
+                Billing::runDailyRenewals();
+            } catch (Throwable $e) {
+                $this->log($e);
+            }
+        }
+
+        return $this->router->dispatch($request);
     }
 
     private function configureErrors(): void
@@ -45,7 +74,7 @@ final class App
         ini_set('error_log', BASE_PATH . '/storage/logs/php-error.log');
     }
 
-    private function handleException(Throwable $e): Response
+    private function log(Throwable $e): void
     {
         error_log(sprintf(
             "[%s] %s: %s em %s:%d\n%s",
@@ -56,16 +85,5 @@ final class App
             $e->getLine(),
             $e->getTraceAsString(),
         ));
-
-        if ($this->config['app']['debug']) {
-            $html = '<h1>' . e($e::class) . '</h1>'
-                . '<p>' . e($e->getMessage()) . '</p>'
-                . '<p>' . e($e->getFile()) . ':' . $e->getLine() . '</p>'
-                . '<pre>' . e($e->getTraceAsString()) . '</pre>';
-
-            return Response::html($html, 500);
-        }
-
-        return Response::html('<h1>Erro interno</h1><p>Tente novamente mais tarde.</p>', 500);
     }
 }

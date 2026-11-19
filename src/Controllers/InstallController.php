@@ -97,14 +97,14 @@ final class InstallController
         }
 
         return Response::html(View::render('install', [
-            'title'       => 'Instalação — LiftEat',
+            'title'       => 'Instalação',
             'token'       => (string) $request->input('token', ''),
             'pending'     => $pending,
             'adminExists' => $adminExists,
             'dbError'     => $dbError,
             'success'     => $success,
             'error'       => $error,
-        ]))->withHeader('X-Robots-Tag', 'noindex');
+        ], 'layouts/blank'))->withHeader('X-Robots-Tag', 'noindex');
     }
 
     private function authorized(Request $request): bool
