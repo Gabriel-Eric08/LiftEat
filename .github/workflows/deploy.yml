@@ -1,0 +1,64 @@
+name: Deploy Locaweb (FTP)
+
+# Publica na hospedagem Locaweb a cada push na main.
+# Também pode ser disparado manualmente na aba Actions.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Evita dois deploys simultâneos escrevendo no mesmo FTP.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_mysql, mbstring
+          tools: composer:v2
+          coverage: none
+
+      - name: Validar composer.json
+        run: composer validate --no-check-publish --no-check-lock
+
+      - name: Instalar dependências (produção)
+        run: composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Checar sintaxe PHP
+        run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+
+      # Envia apenas o que mudou desde o último deploy (controle via
+      # .ftp-deploy-sync-state.json no servidor). A raiz do FTP da Locaweb
+      # contém a pasta public_html; o código (src, vendor, config...) fica
+      # ao lado dela, fora do acesso público.
+      - name: Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASS }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
+          port: ${{ vars.FTP_PORT || 21 }}
+          local-dir: ./
+          server-dir: ${{ vars.FTP_SERVER_DIR || './' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            **/node_modules/**
+            .env
+            .env.*
+            storage/logs/**
+            storage/cache/**
+            tests/**
+            README.md

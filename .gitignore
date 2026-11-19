@@ -1,0 +1,20 @@
+# Dependências (instaladas no CI antes do deploy)
+/vendor/
+
+# Configuração local / segredos
+.env
+.env.*
+!.env.example
+
+# Arquivos gerados em runtime
+/storage/logs/*
+/storage/cache/*
+!/storage/logs/.gitkeep
+!/storage/cache/.gitkeep
+
+# IDE / SO
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
