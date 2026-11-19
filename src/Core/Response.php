@@ -39,6 +39,17 @@ final class Response
         return $clone;
     }
 
+    public function hasHeader(string $name): bool
+    {
+        foreach (array_keys($this->headers) as $key) {
+            if (strcasecmp($key, $name) === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function status(): int
     {
         return $this->status;

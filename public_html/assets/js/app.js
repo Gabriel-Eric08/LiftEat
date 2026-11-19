@@ -75,6 +75,7 @@
     /* ---------- Formulários: loading no botão + confirmação ---------- */
     document.addEventListener('submit', (e) => {
         const form = e.target;
+        if (e.defaultPrevented) return; // outro script assumiu o envio (ex.: confirmação própria)
         if (form.dataset.confirm && !form.dataset.confirmed) {
             e.preventDefault();
             confirmDialog(form.dataset.confirm, form.dataset.confirmLabel, form.dataset.confirmTone).then((ok) => {

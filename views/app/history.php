@@ -37,7 +37,7 @@ $hours = intdiv((int) $totals['minutes'], 60);
                 <?php foreach ($sessions as $s):
                     $mins = $s['finished_at'] ? (int) round((strtotime($s['finished_at']) - strtotime($s['started_at'])) / 60) : null;
                     ?>
-                    <div class="list-item">
+                    <a href="/app/<?= $s['status'] === 'in_progress' ? 'sessao' : 'historico' ?>/<?= (int) $s['id'] ?>" class="list-item">
                         <div class="center" style="width:40px">
                             <div class="bold num"><?= e(date_br($s['started_at'], 'd')) ?></div>
                             <div class="xsmall muted"><?= e(weekday_name((int) date('N', strtotime($s['started_at'])), true)) ?></div>
@@ -57,7 +57,7 @@ $hours = intdiv((int) $totals['minutes'], 60);
                         <?php else: ?>
                             <span class="muted"><?= icon('circle-x', '', 20) ?></span>
                         <?php endif ?>
-                    </div>
+                    </a>
                 <?php endforeach ?>
             </div>
         </div>

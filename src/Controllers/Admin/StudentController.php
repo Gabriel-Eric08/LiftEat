@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\Billing;
+use App\Services\Workouts;
 
 final class StudentController
 {
@@ -138,7 +139,29 @@ final class StudentController
             $payments,
         ));
 
+        $sessions = Database::select(
+            'SELECT ws.*,
+                    (SELECT COUNT(*) FROM session_sets ss WHERE ss.session_id = ws.id AND ss.completed = 1) AS sets_done,
+                    (SELECT COUNT(*) FROM session_photos sp WHERE sp.session_id = ws.id) AS photos
+             FROM workout_sessions ws WHERE ws.student_id = ? ORDER BY ws.started_at DESC LIMIT 20',
+            [$student['id']],
+        );
+
+        // Modelos para "novo treino a partir de": treinos de todos os alunos ativos.
+        $templates = Database::select(
+            'SELECT w.id, w.name, s.name AS student_name,
+                    (SELECT COUNT(*) FROM workout_exercises we WHERE we.workout_id = w.id) AS exercise_count
+             FROM workouts w JOIN students s ON s.id = w.student_id
+             WHERE s.deleted_at IS NULL
+             ORDER BY s.id = ? DESC, s.name, w.name',
+            [$student['id']],
+        );
+
         return view('admin/students/show', [
+            'workouts'    => Workouts::forStudent((int) $student['id']),
+            'schedule'    => Workouts::schedule((int) $student['id']),
+            'sessions'    => $sessions,
+            'templates'   => $templates,
             'title'       => $student['name'],
             'breadcrumbs' => ['Alunos' => '/admin/alunos', $student['name'] => null],
             'student'     => $student,

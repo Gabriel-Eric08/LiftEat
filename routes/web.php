@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\Admin;
 use App\Controllers\HealthController;
 use App\Controllers\InstallController;
+use App\Controllers\MediaController;
 use App\Controllers\Student;
 use App\Core\Response;
 use App\Core\Router;
@@ -17,6 +18,7 @@ use App\Middleware\StudentGuest;
 return static function (Router $router): void {
     $router->get('/', static fn () => Response::redirect('/app'));
     $router->get('/health', [HealthController::class, 'show']);
+    $router->get('/media/fotos/{id}', [MediaController::class, 'photo']);
 
     // Instalação do banco (só ativa com INSTALL_TOKEN no .env)
     $router->get('/install', [InstallController::class, 'show']);
@@ -51,8 +53,22 @@ return static function (Router $router): void {
         $r->post('/pagamentos/{id}/pagar', [Admin\FinanceController::class, 'markPaid']);
         $r->post('/pagamentos/{id}/cancelar', [Admin\FinanceController::class, 'cancel']);
 
-        $r->get('/treinos', [Admin\ComingSoonController::class, 'show']);
-        $r->get('/exercicios', [Admin\ComingSoonController::class, 'show']);
+        $r->get('/treinos', [Admin\WorkoutController::class, 'overview']);
+        $r->post('/alunos/{id}/treinos', [Admin\WorkoutController::class, 'store']);
+        $r->post('/alunos/{id}/agenda', [Admin\WorkoutController::class, 'schedule']);
+        $r->get('/treinos/{id}/editar', [Admin\WorkoutController::class, 'edit']);
+        $r->post('/treinos/{id}', [Admin\WorkoutController::class, 'update']);
+        $r->post('/treinos/{id}/duplicar', [Admin\WorkoutController::class, 'duplicate']);
+        $r->post('/treinos/{id}/status', [Admin\WorkoutController::class, 'toggle']);
+        $r->post('/treinos/{id}/excluir', [Admin\WorkoutController::class, 'destroy']);
+        $r->get('/sessoes/{id}', [Admin\WorkoutController::class, 'session']);
+
+        $r->get('/exercicios', [Admin\ExerciseController::class, 'index']);
+        $r->post('/exercicios', [Admin\ExerciseController::class, 'store']);
+        $r->post('/exercicios/{id}', [Admin\ExerciseController::class, 'update']);
+        $r->post('/exercicios/{id}/status', [Admin\ExerciseController::class, 'toggle']);
+        $r->post('/exercicios/{id}/excluir', [Admin\ExerciseController::class, 'destroy']);
+
         $r->get('/dietas', [Admin\ComingSoonController::class, 'show']);
 
         $r->get('/perfil', [Admin\ProfileController::class, 'show']);
@@ -77,6 +93,16 @@ return static function (Router $router): void {
             $r->get('/historico', [Student\AppController::class, 'history']);
             $r->get('/perfil', [Student\AppController::class, 'profile']);
             $r->post('/perfil/senha', [Student\AppController::class, 'password']);
+
+            // Execução do treino
+            $r->post('/treinos/{id}/iniciar', [Student\SessionController::class, 'start']);
+            $r->get('/sessao/{id}', [Student\SessionController::class, 'show']);
+            $r->post('/sessao/{id}/series', [Student\SessionController::class, 'saveSet']);
+            $r->post('/sessao/{id}/fotos', [Student\SessionController::class, 'uploadPhoto']);
+            $r->post('/sessao/{id}/finalizar', [Student\SessionController::class, 'finish']);
+            $r->post('/sessao/{id}/descartar', [Student\SessionController::class, 'discard']);
+            $r->post('/fotos/{id}/excluir', [Student\SessionController::class, 'deletePhoto']);
+            $r->get('/historico/{id}', [Student\SessionController::class, 'detail']);
         });
     });
 };

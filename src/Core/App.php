@@ -42,10 +42,15 @@ final class App
 
         // Páginas dinâmicas nunca devem ir para cache (proxy/CDN da hospedagem ou navegador):
         // uma página de login em cache carrega um token CSRF de outra sessão e o login falha.
-        $response
-            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
-            ->withHeader('Pragma', 'no-cache')
-            ->send();
+        if (!$response->hasHeader('Cache-Control')) {
+            $response = $response
+                ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private')
+                ->withHeader('Pragma', 'no-cache');
+        }
+
+        // session_start() envia seus próprios cabeçalhos de cache; os da resposta prevalecem.
+        header_remove('Pragma');
+        $response->send();
     }
 
     /**

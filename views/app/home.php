@@ -39,7 +39,14 @@ $daysLeft = (int) (new DateTimeImmutable('today'))->diff(new DateTimeImmutable($
 </section>
 
 <!-- Treino de hoje -->
-<?php if ($todayWorkout !== null): ?>
+<?php if ($active !== null): ?>
+    <a href="/app/sessao/<?= (int) $active['id'] ?>" class="hero-card reveal" style="--i:2;display:block">
+        <div class="eyebrow"><span class="live-dot"></span> Treino em andamento</div>
+        <h2><?= e($active['workout_name']) ?></h2>
+        <p class="small soft mt-1">Começou às <?= e(date_br($active['started_at'], 'H:i')) ?>. Bora terminar?</p>
+        <span class="btn btn-primary btn-lg btn-block mt-3"><?= icon('play', '', 18) ?><span>Continuar treino</span></span>
+    </a>
+<?php elseif ($todayWorkout !== null): ?>
     <section class="hero-card reveal" style="--i:2">
         <div class="eyebrow"><?= icon('flame', '', 14) ?> Treino de hoje · <?= e(weekday_name($today)) ?></div>
         <h2><?= e($todayWorkout['name']) ?></h2>

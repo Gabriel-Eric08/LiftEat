@@ -29,11 +29,20 @@
             <span><?= icon('repeat', '', 16) ?><?= array_sum(array_map(static fn ($x) => (int) $x['sets'], $exercises)) ?> séries</span>
         </div>
         <?php if ($workout['notes']): ?><p class="small soft mt-3"><?= e($workout['notes']) ?></p><?php endif ?>
-        <?php if ($day === $today): ?>
-            <button type="button" class="btn btn-primary btn-lg btn-block mt-3" aria-disabled="true" title="Disponível em breve">
-                <?= icon('play', '', 18) ?><span>Iniciar treino</span>
-            </button>
-            <p class="xsmall muted center mt-2">O registro de treino chega na próxima atualização.</p>
+        <?php if ($active !== null): ?>
+            <a href="/app/sessao/<?= (int) $active['id'] ?>" class="btn btn-primary btn-lg btn-block mt-3">
+                <?= icon('play', '', 18) ?><span>Continuar treino em andamento</span>
+            </a>
+            <?php if ((int) $active['workout_id'] !== (int) $workout['id']): ?>
+                <p class="xsmall muted center mt-2">Você está no meio de “<?= e($active['workout_name']) ?>”.</p>
+            <?php endif ?>
+        <?php elseif ($exercises !== []): ?>
+            <form method="post" action="/app/treinos/<?= (int) $workout['id'] ?>/iniciar" class="mt-3">
+                <?= csrf_field() ?>
+                <button type="submit" class="btn btn-primary btn-lg btn-block">
+                    <?= icon('play', '', 18) ?><span><?= $day === $today ? 'Iniciar treino' : 'Fazer este treino hoje' ?></span>
+                </button>
+            </form>
         <?php endif ?>
     </section>
 
@@ -59,6 +68,9 @@
                             <?php if ($ex['technique']): ?><span class="badge badge-success badge-plain"><?= e($ex['technique']) ?></span><?php endif ?>
                         </div>
                         <?php if ($ex['notes']): ?><p class="xsmall soft"><?= e($ex['notes']) ?></p><?php endif ?>
+                        <?php if (!empty($last[(int) $ex['exercise_id']]) && ($best = max(array_map(static fn ($s) => (float) $s['load_kg'], $last[(int) $ex['exercise_id']]))) > 0): ?>
+                            <p class="xsmall muted"><?= icon('history', '', 12) ?> Última vez: até <?= e(rtrim(rtrim(number_format($best, 2, ',', ''), '0'), ',')) ?> kg</p>
+                        <?php endif ?>
                     </div>
                 </div>
             </article>

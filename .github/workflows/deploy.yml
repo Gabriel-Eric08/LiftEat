@@ -60,5 +60,7 @@ jobs:
             .env.*
             storage/logs/**
             storage/cache/**
+            storage/sessions/**
+            storage/uploads/**
             tests/**
             README.md

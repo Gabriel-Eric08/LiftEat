@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Services\Workouts;
 
 /**
  * Web app do aluno (mobile first): Hoje, Treinos, Dieta, Histórico e Perfil.
@@ -62,6 +63,7 @@ final class AppController
             'doneThisWeek' => $doneThisWeek,
             'monthCount'   => $monthCount,
             'nextMeal'     => $nextMeal,
+            'active'       => Workouts::activeSession((int) $student['id']),
         ], 'layouts/app');
     }
 
@@ -89,6 +91,8 @@ final class AppController
             'today'     => (int) date('N'),
             'workout'   => $workout,
             'exercises' => $exercises,
+            'active'    => Workouts::activeSession((int) $student['id']),
+            'last'      => Workouts::lastPerformance((int) $student['id'], array_map(static fn ($x) => (int) $x['exercise_id'], $exercises)),
         ], 'layouts/app');
     }
 

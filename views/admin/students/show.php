@@ -138,7 +138,7 @@ $statusLabels = ['paid' => ['Pago', 'success'], 'pending' => ['Pendente', 'warni
     </div>
 
     <div class="tab-panel" data-panel="treinos">
-        <?= View::partial('empty', ['icon' => 'dumbbell', 'heading' => 'Montagem de treinos chegando', 'text' => 'Em breve você monta a ficha de cada dia da semana direto aqui.']) ?>
+        <?= View::render('admin/students/_workouts', compact('student', 'workouts', 'schedule', 'sessions', 'templates')) ?>
     </div>
 
     <div class="tab-panel" data-panel="dieta">
