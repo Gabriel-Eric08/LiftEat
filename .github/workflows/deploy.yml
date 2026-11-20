@@ -31,11 +31,19 @@ jobs:
       - name: Validar composer.json
         run: composer validate --no-check-publish --no-check-lock
 
-      - name: Instalar dependências (produção)
-        run: composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
+      # Testes primeiro (com dependências de desenvolvimento): se falharem, não há deploy.
+      - name: Instalar dependências (com dev, para os testes)
+        run: composer install --no-interaction --no-progress --prefer-dist
 
       - name: Checar sintaxe PHP
-        run: find . -path ./vendor -prune -o -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+        run: composer lint
+
+      - name: Rodar testes
+        run: composer test
+
+      # Reinstala só o necessário para produção (o PHPUnit não vai para o servidor).
+      - name: Instalar dependências (produção)
+        run: composer install --no-dev --no-interaction --no-progress --prefer-dist --optimize-autoloader
 
       # Envia apenas o que mudou desde o último deploy (controle via
       # .ftp-deploy-sync-state.json no servidor). A raiz do FTP da Locaweb
@@ -55,6 +63,7 @@ jobs:
             **/.git*
             **/.git*/**
             .github/**
+            .claude/**
             **/node_modules/**
             .env
             .env.*
@@ -63,4 +72,6 @@ jobs:
             storage/sessions/**
             storage/uploads/**
             tests/**
+            phpunit.xml.dist
+            bin/lint.php
             README.md
