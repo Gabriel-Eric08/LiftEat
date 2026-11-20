@@ -26,7 +26,17 @@ final class StudentController
         'inativos' => ['Inativos', "status = 'inactive'"],
     ];
 
-    private const PAYMENT_METHODS = ['pix' => 'Pix', 'dinheiro' => 'Dinheiro', 'cartao' => 'Cartão', 'transferencia' => 'Transferência', 'outro' => 'Outro'];
+    /**
+     * Ordenações da lista: chave da URL (?ordem=) => [rótulo, ORDER BY].
+     * Só estas chaves são aceitas; nada da URL entra no SQL. Sem data vai para o fim.
+     */
+    public const SORTS = [
+        'nome'          => ['Nome (A–Z)', 's.name ASC, s.id ASC'],
+        'vencimento'    => ['Vencimento do acesso', 's.access_until IS NULL, s.access_until ASC, s.name ASC'],
+        'ultimo_treino' => ['Mais tempo sem treinar', 'last_session_at IS NULL, last_session_at ASC, s.name ASC'],
+    ];
+
+    private const PAYMENT_METHODS =['pix' => 'Pix', 'dinheiro' => 'Dinheiro', 'cartao' => 'Cartão', 'transferencia' => 'Transferência', 'outro' => 'Outro'];
 
     public function index(Request $request): Response
     {
@@ -34,6 +44,7 @@ final class StudentController
         $situation = array_key_exists($situation, self::SITUATIONS) ? $situation : 'todos';
         $search = trim((string) $request->query('q', ''));
         $page = max(1, (int) $request->query('pagina', 1));
+        $sort = self::parseSort($request->query('ordem'));
 
         $where = ['deleted_at IS NULL', self::SITUATIONS[$situation][1]];
         $params = [];
@@ -51,7 +62,7 @@ final class StudentController
             "SELECT s.*,
                     (SELECT MAX(started_at) FROM workout_sessions ws WHERE ws.student_id = s.id) AS last_session_at
              FROM students s WHERE {$whereSql}
-             ORDER BY s.name ASC LIMIT " . self::PER_PAGE . " OFFSET {$offset}",
+             ORDER BY " . self::orderBy($sort) . ' LIMIT ' . self::PER_PAGE . " OFFSET {$offset}",
             $params,
         );
 
@@ -68,10 +79,23 @@ final class StudentController
             'situation'  => $situation,
             'counts'     => $counts,
             'search'     => $search,
+            'sort'       => $sort,
+            'sorts'      => array_map(static fn ($s) => $s[0], self::SORTS),
             'page'       => $page,
             'pages'      => max(1, (int) ceil($total / self::PER_PAGE)),
             'total'      => $total,
         ], 'layouts/admin');
+    }
+
+    /** Ordenação pedida na URL; qualquer valor fora da lista vira "nome". */
+    public static function parseSort(mixed $value): string
+    {
+        return is_string($value) && array_key_exists($value, self::SORTS) ? $value : 'nome';
+    }
+
+    public static function orderBy(string $sort): string
+    {
+        return self::SORTS[self::parseSort($sort)][1];
     }
 
     public function create(Request $request): Response

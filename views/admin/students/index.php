@@ -1,4 +1,13 @@
-<?php use App\Core\View; ?>
+<?php
+use App\Core\View;
+
+// Monta a URL da lista mantendo busca, situação e ordenação (valores vazios/padrão saem da URL).
+$qs = static fn (array $extra = []) => '?' . http_build_query(array_filter(
+    [...['situacao' => $situation, 'q' => $search, 'ordem' => $sort], ...$extra],
+    static fn ($v, $k) => $v !== '' && $v !== null && !($k === 'ordem' && $v === 'nome') && !($k === 'situacao' && $v === 'todos'),
+    ARRAY_FILTER_USE_BOTH,
+));
+?>
 <div class="page-header reveal">
     <div>
         <h1>Alunos</h1>
@@ -9,14 +18,28 @@
 
 <div class="card card-flush reveal" style="--i:1">
     <div class="stack" style="padding:16px 16px 0;--gap:12px">
-        <form method="get" class="input-group" role="search" data-no-loading>
-            <?= icon('search', '', 18) ?>
-            <input type="hidden" name="situacao" value="<?= e($situation) ?>">
-            <input class="input" type="search" name="q" value="<?= e($search) ?>" placeholder="Buscar por nome, e-mail ou telefone…" autocomplete="off">
-        </form>
+        <div class="row" style="--gap:8px;flex-wrap:wrap">
+            <form method="get" class="input-group grow" role="search" data-no-loading>
+                <?= icon('search', '', 18) ?>
+                <input type="hidden" name="situacao" value="<?= e($situation) ?>">
+                <input type="hidden" name="ordem" value="<?= e($sort) ?>">
+                <input class="input" type="search" name="q" value="<?= e($search) ?>" placeholder="Buscar por nome, e-mail ou telefone…" autocomplete="off">
+            </form>
+            <form method="get" data-no-loading>
+                <input type="hidden" name="situacao" value="<?= e($situation) ?>">
+                <input type="hidden" name="q" value="<?= e($search) ?>">
+                <label class="sr-only" for="ordem">Ordenar por</label>
+                <select class="select" id="ordem" name="ordem" data-autosubmit aria-label="Ordenar por">
+                    <?php foreach ($sorts as $key => $label): ?>
+                        <option value="<?= e($key) ?>" <?= $key === $sort ? 'selected' : '' ?>>Ordenar: <?= e($label) ?></option>
+                    <?php endforeach ?>
+                </select>
+                <noscript><button class="btn btn-outline btn-sm">Ordenar</button></noscript>
+            </form>
+        </div>
         <nav class="chips" aria-label="Filtrar por situação">
             <?php foreach ($situations as $key => $label): ?>
-                <a href="?situacao=<?= e($key) ?><?= $search !== '' ? '&q=' . urlencode($search) : '' ?>" class="chip <?= $key === $situation ? 'is-active' : '' ?>">
+                <a href="<?= e($qs(['situacao' => $key])) ?>" class="chip <?= $key === $situation ? 'is-active' : '' ?>">
                     <?= e($label) ?> <span class="count"><?= (int) $counts[$key] ?></span>
                 </a>
             <?php endforeach ?>
@@ -85,9 +108,8 @@
             <div class="row-between" style="padding:12px 16px;border-top:1px solid var(--border)">
                 <span class="small muted">Página <?= $page ?> de <?= $pages ?> · <?= $total ?> alunos</span>
                 <div class="row" style="--gap:6px">
-                    <?php $qs = fn ($p) => '?' . http_build_query(['situacao' => $situation, 'q' => $search, 'pagina' => $p]); ?>
-                    <a class="btn btn-outline btn-sm" href="<?= e($qs($page - 1)) ?>" <?= $page <= 1 ? 'aria-disabled="true"' : '' ?>><?= icon('chevron-left', '', 16) ?></a>
-                    <a class="btn btn-outline btn-sm" href="<?= e($qs($page + 1)) ?>" <?= $page >= $pages ? 'aria-disabled="true"' : '' ?>><?= icon('chevron-right', '', 16) ?></a>
+                    <a class="btn btn-outline btn-sm" href="<?= e($qs(['pagina' => $page - 1])) ?>" <?= $page <= 1 ? 'aria-disabled="true"' : '' ?>><?= icon('chevron-left', '', 16) ?></a>
+                    <a class="btn btn-outline btn-sm" href="<?= e($qs(['pagina' => $page + 1])) ?>" <?= $page >= $pages ? 'aria-disabled="true"' : '' ?>><?= icon('chevron-right', '', 16) ?></a>
                 </div>
             </div>
         <?php endif ?>
