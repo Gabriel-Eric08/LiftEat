@@ -11,10 +11,15 @@ $methodTotal = array_sum(array_map(static fn ($m) => (float) $m['total'], $byMet
         <h1>Financeiro</h1>
         <p>Recebimentos, pendências e faturamento por mês.</p>
     </div>
-    <div class="segmented" aria-label="Mês">
-        <a href="<?= e($qs(['mes' => $prev])) ?>" aria-label="Mês anterior"><?= icon('chevron-left', '', 16) ?></a>
-        <a class="is-active" href="<?= e($qs(['mes' => date('Y-m')])) ?>" title="Voltar para o mês atual"><?= icon('calendar', '', 16) ?><?= e($monthLabel) ?></a>
-        <a href="<?= e($qs(['mes' => $next])) ?>" aria-label="Próximo mês"><?= icon('chevron-right', '', 16) ?></a>
+    <div class="row" style="--gap:8px;flex-wrap:wrap">
+        <div class="segmented" aria-label="Mês">
+            <a href="<?= e($qs(['mes' => $prev])) ?>" aria-label="Mês anterior"><?= icon('chevron-left', '', 16) ?></a>
+            <a class="is-active" href="<?= e($qs(['mes' => date('Y-m')])) ?>" title="Voltar para o mês atual"><?= icon('calendar', '', 16) ?><?= e($monthLabel) ?></a>
+            <a href="<?= e($qs(['mes' => $next])) ?>" aria-label="Próximo mês"><?= icon('chevron-right', '', 16) ?></a>
+        </div>
+        <a href="/admin/financeiro/exportar<?= e($qs([])) ?>" class="btn btn-outline btn-sm" title="Baixar as mensalidades deste mês e filtro em CSV" download>
+            <?= icon('download', '', 16) ?><span>Exportar CSV</span>
+        </a>
     </div>
 </div>
 

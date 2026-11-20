@@ -50,6 +50,7 @@ return static function (Router $router): void {
         $r->post('/alunos/{id}/pagamentos', [Admin\StudentController::class, 'storePayment']);
 
         $r->get('/financeiro', [Admin\FinanceController::class, 'index']);
+        $r->get('/financeiro/exportar', [Admin\FinanceController::class, 'export']);
         $r->post('/pagamentos/{id}/pagar', [Admin\FinanceController::class, 'markPaid']);
         $r->post('/pagamentos/{id}/cancelar', [Admin\FinanceController::class, 'cancel']);
 

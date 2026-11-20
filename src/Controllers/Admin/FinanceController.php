@@ -9,6 +9,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Services\Billing;
+use App\Services\FinanceCsv;
 use DateTimeImmutable;
 use RuntimeException;
 
@@ -19,23 +20,9 @@ final class FinanceController
 
     public function index(Request $request): Response
     {
-        $month = (string) $request->query('mes', date('Y-m'));
-        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
-            $month = date('Y-m');
-        }
-        $status = (string) $request->query('status', 'todos');
-        $status = array_key_exists($status, self::STATUSES) ? $status : 'todos';
-
-        $first = new DateTimeImmutable($month . '-01');
-        $from = $first->format('Y-m-d');
-        $to = $first->modify('last day of this month')->format('Y-m-d');
-        $fromTs = $from . ' 00:00:00';
-        $toTs = $to . ' 23:59:59';
-
-        // Recebido no mês = pagos com paid_at no mês. Pendentes/cancelados = pelo vencimento.
-        $base = '(p.status = \'paid\' AND p.paid_at BETWEEN ? AND ?)
-              OR (p.status <> \'paid\' AND p.due_date BETWEEN ? AND ?)';
-        $params = [$fromTs, $toTs, $from, $to];
+        [$first, $status] = $this->filters($request);
+        [$base, $params] = $this->monthScope($first);
+        [$fromTs, $toTs] = [$params[0], $params[1]];
 
         $summary = Database::select(
             "SELECT
@@ -63,14 +50,7 @@ final class FinanceController
             [$fromTs, $toTs],
         );
 
-        $filter = $status === 'todos' ? '' : ' AND p.status = ' . Database::connection()->quote($status);
-        $payments = Database::select(
-            "SELECT p.*, s.name AS student_name, s.deleted_at AS student_deleted
-             FROM payments p JOIN students s ON s.id = p.student_id
-             WHERE ({$base}){$filter}
-             ORDER BY COALESCE(p.paid_at, p.due_date) DESC, p.id DESC",
-            $params,
-        );
+        $payments = $this->payments($first, $status);
 
         return view('admin/finance/index', [
             'title'    => 'Financeiro',
@@ -87,6 +67,70 @@ final class FinanceController
             'byMethod' => $byMethod,
             'payments' => $payments,
         ], 'layouts/admin');
+    }
+
+    /** GET /admin/financeiro/exportar — mesmas mensalidades da tela, em CSV. */
+    public function export(Request $request): Response
+    {
+        [$first, $status] = $this->filters($request);
+
+        return Response::download(
+            FinanceCsv::build($this->payments($first, $status), self::METHODS),
+            FinanceCsv::filename($first),
+            'text/csv; charset=UTF-8',
+        );
+    }
+
+    /**
+     * Mês (?mes=AAAA-MM) e situação (?status=) vindos da URL, com valores seguros.
+     *
+     * @return array{DateTimeImmutable, string}
+     */
+    public static function parseFilters(mixed $month, mixed $status, string $today = ''): array
+    {
+        $today = $today !== '' ? $today : date('Y-m');
+        $month = is_string($month) && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) ? $month : $today;
+        $status = is_string($status) && array_key_exists($status, self::STATUSES) ? $status : 'todos';
+
+        return [new DateTimeImmutable($month . '-01'), $status];
+    }
+
+    /** @return array{DateTimeImmutable, string} */
+    private function filters(Request $request): array
+    {
+        return self::parseFilters($request->query('mes'), $request->query('status'));
+    }
+
+    /**
+     * Recebido no mês = pagos com paid_at no mês. Pendentes/cancelados = pelo vencimento.
+     *
+     * @return array{string, list<string>}
+     */
+    private function monthScope(DateTimeImmutable $first): array
+    {
+        $from = $first->format('Y-m-d');
+        $to = $first->modify('last day of this month')->format('Y-m-d');
+
+        return [
+            '(p.status = \'paid\' AND p.paid_at BETWEEN ? AND ?)
+              OR (p.status <> \'paid\' AND p.due_date BETWEEN ? AND ?)',
+            [$from . ' 00:00:00', $to . ' 23:59:59', $from, $to],
+        ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function payments(DateTimeImmutable $first, string $status): array
+    {
+        [$base, $params] = $this->monthScope($first);
+        $filter = $status === 'todos' ? '' : ' AND p.status = ' . Database::connection()->quote($status);
+
+        return Database::select(
+            "SELECT p.*, s.name AS student_name, s.deleted_at AS student_deleted
+             FROM payments p JOIN students s ON s.id = p.student_id
+             WHERE ({$base}){$filter}
+             ORDER BY COALESCE(p.paid_at, p.due_date) DESC, p.id DESC",
+            $params,
+        );
     }
 
     public function markPaid(Request $request, string $id): Response

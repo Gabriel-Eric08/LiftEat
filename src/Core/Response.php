@@ -26,6 +26,18 @@ final class Response
         return new self($json, $status, ['Content-Type' => 'application/json; charset=UTF-8']);
     }
 
+    /** Força o download do conteúdo como arquivo (ex.: exportação CSV). */
+    public static function download(string $body, string $filename, string $contentType): self
+    {
+        $safeName = preg_replace('/[^\w.\-]/', '_', $filename) ?? 'arquivo';
+
+        return new self($body, 200, [
+            'Content-Type'        => $contentType,
+            'Content-Disposition' => 'attachment; filename="' . $safeName . '"',
+            'Cache-Control'       => 'no-store',
+        ]);
+    }
+
     public static function redirect(string $url, int $status = 302): self
     {
         return new self('', $status, ['Location' => $url]);
@@ -53,6 +65,22 @@ final class Response
     public function status(): int
     {
         return $this->status;
+    }
+
+    public function body(): string
+    {
+        return $this->body;
+    }
+
+    public function header(string $name): ?string
+    {
+        foreach ($this->headers as $key => $value) {
+            if (strcasecmp($key, $name) === 0) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     public function send(): void
