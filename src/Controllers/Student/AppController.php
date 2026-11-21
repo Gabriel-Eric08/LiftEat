@@ -6,6 +6,7 @@ namespace App\Controllers\Student;
 
 use App\Core\Auth;
 use App\Core\Database;
+use App\Core\Pagination;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
@@ -17,6 +18,8 @@ use App\Services\Workouts;
  */
 final class AppController
 {
+    private const HISTORY_PER_PAGE = 30;
+
     public function home(Request $request): Response
     {
         $student = Auth::student();
@@ -112,12 +115,19 @@ final class AppController
     {
         $student = Auth::student();
 
+        $count = (int) Database::select(
+            'SELECT COUNT(*) AS c FROM workout_sessions WHERE student_id = ?',
+            [$student['id']],
+        )[0]['c'];
+        $pagination = new Pagination($request->query('pagina'), $count, self::HISTORY_PER_PAGE);
+
         $sessions = Database::select(
             'SELECT ws.*,
                     (SELECT COUNT(*) FROM session_photos sp WHERE sp.session_id = ws.id) AS photos,
                     (SELECT COUNT(*) FROM session_sets ss WHERE ss.session_id = ws.id AND ss.completed = 1) AS sets_done
              FROM workout_sessions ws WHERE ws.student_id = ?
-             ORDER BY ws.started_at DESC LIMIT 60',
+             ORDER BY ws.started_at DESC, ws.id DESC
+             LIMIT ' . $pagination->perPage . ' OFFSET ' . $pagination->offset,
             [$student['id']],
         );
 
@@ -129,19 +139,30 @@ final class AppController
             [date('Y-m-01'), $student['id']],
         )[0];
 
+        return view('app/history', [
+            'title'      => 'Histórico',
+            'eyebrow'    => 'Sua evolução',
+            'heading'    => 'Histórico',
+            'grouped'    => self::groupByMonth($sessions),
+            'totals'     => $totals,
+            'pagination' => $pagination,
+        ], 'layouts/app');
+    }
+
+    /**
+     * Agrupa as sessões por mês ("AAAA-MM"), mantendo a ordem recebida.
+     *
+     * @param list<array<string, mixed>> $sessions
+     * @return array<string, list<array<string, mixed>>>
+     */
+    public static function groupByMonth(array $sessions): array
+    {
         $grouped = [];
         foreach ($sessions as $s) {
-            $key = substr($s['started_at'], 0, 7);
-            $grouped[$key][] = $s;
+            $grouped[substr((string) $s['started_at'], 0, 7)][] = $s;
         }
 
-        return view('app/history', [
-            'title'   => 'Histórico',
-            'eyebrow' => 'Sua evolução',
-            'heading' => 'Histórico',
-            'grouped' => $grouped,
-            'totals'  => $totals,
-        ], 'layouts/app');
+        return $grouped;
     }
 
     public function profile(Request $request): Response
