@@ -63,3 +63,19 @@ $hours = intdiv((int) $totals['minutes'], 60);
         </div>
     </section>
 <?php endforeach ?>
+
+<?php if ($pagination->pages > 1): ?>
+    <nav class="row-between reveal" style="--i:<?= $i ?>;--gap:8px" aria-label="Páginas do histórico">
+        <?php if ($pagination->hasPrevious()): ?>
+            <a class="btn btn-outline btn-sm" href="?pagina=<?= $pagination->page - 1 ?>"><?= icon('chevron-left', '', 16) ?><span>Mais recentes</span></a>
+        <?php else: ?>
+            <span></span>
+        <?php endif ?>
+        <span class="xsmall muted">Página <?= $pagination->page ?> de <?= $pagination->pages ?></span>
+        <?php if ($pagination->hasNext()): ?>
+            <a class="btn btn-outline btn-sm" href="?pagina=<?= $pagination->page + 1 ?>"><span>Mais antigos</span><?= icon('chevron-right', '', 16) ?></a>
+        <?php else: ?>
+            <span></span>
+        <?php endif ?>
+    </nav>
+<?php endif ?>
