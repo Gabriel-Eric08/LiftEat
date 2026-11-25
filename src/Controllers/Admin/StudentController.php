@@ -14,6 +14,7 @@ use App\Services\Billing;
 use App\Services\BodyMeasurements;
 use App\Services\DietAdherence;
 use App\Services\DietPlans;
+use App\Services\ProgressCharts;
 use App\Services\Workouts;
 
 final class StudentController
@@ -198,7 +199,8 @@ final class StudentController
             'schedule'    => Workouts::schedule((int) $student['id']),
             'diets'       => $diets,
             'adherence'   => $adherence[(int) $student['id']] ?? null,
-            'measurements' => BodyMeasurements::forStudent((int) $student['id']),
+            'measurements' => $measurements = BodyMeasurements::forStudent((int) $student['id']),
+            'charts'       => ProgressCharts::forStudent((int) $student['id'], $measurements ?? [], $request->query('exercicio')),
             'sessions'    => $sessions,
             'templates'   => $templates,
             'title'       => $student['name'],

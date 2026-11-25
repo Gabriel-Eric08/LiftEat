@@ -40,8 +40,15 @@ $fields = static function (string $prefix, array $values): string {
     <section class="card card-glow reveal">
         <?= View::partial('empty', ['icon' => 'ruler', 'heading' => 'Quase pronto', 'text' => 'O registro de peso e medidas ainda está sendo liberado. Tente de novo mais tarde.']) ?>
     </section>
+    <div class="stack reveal" style="--i:1;--gap:12px">
+        <?= View::partial('progress-charts', ['charts' => $charts, 'action' => '/app/evolucao', 'showWeight' => false]) ?>
+    </div>
 <?php else: ?>
     <button type="button" class="btn btn-primary btn-block reveal" data-open="new-measurement"><?= icon('plus', '', 18) ?><span>Registrar peso e medidas</span></button>
+
+    <div class="stack reveal" style="--i:1;--gap:12px">
+        <?= View::partial('progress-charts', ['charts' => $charts, 'action' => '/app/evolucao']) ?>
+    </div>
 
     <?php if ($records === []): ?>
         <section class="card card-glow reveal" style="--i:1">

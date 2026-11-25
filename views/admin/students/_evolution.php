@@ -2,13 +2,29 @@
 use App\Core\View;
 use App\Services\BodyMeasurements as M;
 
-/** @var array $student @var list<array>|null $measurements null = migration ainda não aplicada */
+/**
+ * @var array            $student
+ * @var list<array>|null $measurements null = migration ainda não aplicada
+ * @var array|null       $charts       saída de ProgressCharts::forStudent()
+ */
 $measurements ??= null;
+$charts ??= null;
 $variation = M::variation($measurements ?? []);
 // Colunas da tabela: só as medidas que o aluno já registrou alguma vez.
 $used = array_values(array_filter(array_keys(M::FIELDS), static fn ($f) => isset($variation[$f])));
 ?>
 <div class="stack" style="--gap:16px;padding-top:20px">
+    <?php if ($charts !== null): ?>
+        <div class="grid grid-2" style="--gap:12px;align-items:start">
+            <?= View::partial('progress-charts', [
+                'charts'     => $charts,
+                'action'     => '/admin/alunos/' . (int) $student['id'],
+                'hidden'     => ['aba' => 'evolucao'],
+                'showWeight' => $measurements !== null,
+            ]) ?>
+        </div>
+    <?php endif ?>
+
     <?php if ($measurements === null): ?>
         <p class="small muted">O registro de peso e medidas fica disponível depois que a migration 003 for aplicada na página de instalação.</p>
     <?php elseif ($measurements === []): ?>

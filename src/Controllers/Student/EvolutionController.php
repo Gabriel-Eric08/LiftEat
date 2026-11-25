@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Services\BodyMeasurements;
+use App\Services\ProgressCharts;
 
 /**
  * Evolução do aluno: registro de peso e medidas.
@@ -31,6 +32,7 @@ final class EvolutionController
             'records'   => $records ?? [],
             'available' => $records !== null,
             'variation' => BodyMeasurements::variation($records ?? []),
+            'charts'    => ProgressCharts::forStudent((int) $student['id'], $records ?? [], $request->query('exercicio')),
         ], 'layouts/app');
     }
 

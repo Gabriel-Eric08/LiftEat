@@ -147,7 +147,7 @@ $statusLabels = ['paid' => ['Pago', 'success'], 'pending' => ['Pendente', 'warni
     </div>
 
     <div class="tab-panel" data-panel="evolucao">
-        <?= View::render('admin/students/_evolution', compact('student', 'measurements')) ?>
+        <?= View::render('admin/students/_evolution', compact('student', 'measurements', 'charts')) ?>
     </div>
 </section>
 
