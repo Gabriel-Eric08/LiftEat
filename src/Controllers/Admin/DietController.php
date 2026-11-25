@@ -9,6 +9,7 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Services\DietAdherence;
 use App\Services\DietMeals;
 use App\Services\DietPlans;
 
@@ -22,11 +23,23 @@ final class DietController
     public function index(Request $request): Response
     {
         $plans = DietPlans::all();
+        $sort = DietAdherence::parseSort($request->query('ordem'));
 
-        $withActive = count(array_unique(array_column(
-            array_filter($plans, static fn ($p) => (bool) $p['is_active']),
-            'student_id',
-        )));
+        $activeMealCounts = [];
+        foreach ($plans as $p) {
+            if ($p['is_active']) {
+                $activeMealCounts[(int) $p['student_id']] = (int) $p['meal_count'];
+            }
+        }
+        $withActive = count($activeMealCounts);
+
+        // null = check-ins ainda indisponíveis (migration 002 pendente).
+        $adherence = DietAdherence::forStudents($activeMealCounts, date('Y-m-d'));
+        foreach ($plans as &$p) {
+            $p['adherence'] = $p['is_active'] && $adherence !== null ? $adherence[(int) $p['student_id']]['summary'] : null;
+        }
+        unset($p);
+        $plans = DietAdherence::sortRows($plans, $sort);
 
         $without = Database::select(
             'SELECT s.id, s.name, s.goal FROM students s
@@ -40,6 +53,8 @@ final class DietController
             'plans'      => $plans,
             'withActive' => $withActive,
             'without'    => $without,
+            'sort'       => $sort,
+            'checkins'   => $adherence !== null,
         ], 'layouts/admin');
     }
 

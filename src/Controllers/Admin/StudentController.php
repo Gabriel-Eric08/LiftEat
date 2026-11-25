@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\Billing;
+use App\Services\DietAdherence;
 use App\Services\DietPlans;
 use App\Services\Workouts;
 
@@ -182,10 +183,20 @@ final class StudentController
             [$student['id']],
         );
 
+        $diets = DietPlans::forStudent((int) $student['id']);
+        $activeMeals = 0;
+        foreach ($diets as $d) {
+            if ($d['is_active']) {
+                $activeMeals = (int) $d['meal_count'];
+            }
+        }
+        $adherence = DietAdherence::forStudents([(int) $student['id'] => $activeMeals], date('Y-m-d'));
+
         return view('admin/students/show', [
             'workouts'    => Workouts::forStudent((int) $student['id']),
             'schedule'    => Workouts::schedule((int) $student['id']),
-            'diets'       => DietPlans::forStudent((int) $student['id']),
+            'diets'       => $diets,
+            'adherence'   => $adherence[(int) $student['id']] ?? null,
             'sessions'    => $sessions,
             'templates'   => $templates,
             'title'       => $student['name'],

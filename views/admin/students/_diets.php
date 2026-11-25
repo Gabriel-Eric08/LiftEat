@@ -1,11 +1,44 @@
 <?php
 use App\Core\View;
 
-/** @var array $student @var list<array> $diets */
+/** @var array $student @var list<array> $diets @var array|null $adherence adesão dos últimos 7 dias (null = check-in indisponível) */
 $first = e(first_name($student['name']));
 $hasActive = array_filter($diets, static fn ($d) => (bool) $d['is_active']) !== [];
+$adherence ??= null;
+$tone = static fn (?int $p): string => $p === null ? 'neutral' : ($p >= 80 ? 'success' : ($p >= 50 ? 'warning' : 'danger'));
 ?>
 <div class="stack" style="--gap:12px;padding-top:20px">
+    <?php if ($adherence !== null && $adherence['summary']['daysWithPlan'] > 0): $sum = $adherence['summary']; ?>
+        <section class="card stack" style="--gap:12px;padding:16px">
+            <div class="row-between wrap" style="--gap:8px">
+                <div>
+                    <span class="label">Adesão à dieta · últimos 7 dias</span>
+                    <div class="xsmall muted"><?= $sum['done'] ?> de <?= $sum['total'] ?> refeições marcadas como feitas em <?= $sum['daysWithCheckin'] ?> <?= $sum['daysWithCheckin'] === 1 ? 'dia' : 'dias' ?></div>
+                </div>
+                <?php if ($sum['done'] === 0): ?>
+                    <span class="badge badge-danger"><?= icon('triangle-alert', '', 12) ?>sem check-in na semana</span>
+                <?php else: ?>
+                    <span class="badge badge-<?= $tone($sum['percent']) ?>" style="font-size:.9rem"><?= (int) $sum['percent'] ?>%</span>
+                <?php endif ?>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(7,minmax(0,1fr));--gap:6px">
+                <?php foreach ($adherence['days'] as $day):
+                    $isToday = $day['date'] === date('Y-m-d');
+                    $title = $day['percent'] === null ? 'sem plano' : $day['done'] . ' de ' . $day['total'] . ' refeições' . ($isToday ? ' (dia em andamento)' : ''); ?>
+                    <div class="center stack" style="--gap:4px;padding:8px 2px;border-radius:10px;background:var(--surface-2)<?= $isToday ? ';outline:1px dashed var(--border-strong)' : '' ?>" title="<?= e($title) ?>">
+                        <span class="xsmall muted"><?= e(weekday_name((int) date('N', strtotime($day['date'])), true)) ?></span>
+                        <?php if ($day['percent'] === null): ?>
+                            <span class="small muted">—</span>
+                        <?php else: ?>
+                            <span class="small bold num text-<?= $tone($day['percent']) ?>"><?= $day['percent'] ?>%</span>
+                        <?php endif ?>
+                        <span class="xsmall muted num"><?= e(date('d/m', strtotime($day['date']))) ?></span>
+                    </div>
+                <?php endforeach ?>
+            </div>
+        </section>
+    <?php endif ?>
+
     <div class="section-title">
         <h2>Planos alimentares</h2>
         <button type="button" class="btn btn-primary btn-sm" data-open="new-diet"><?= icon('plus', '', 16) ?><span>Novo plano</span></button>
