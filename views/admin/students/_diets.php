@@ -69,6 +69,10 @@ $hasActive = array_filter($diets, static fn ($d) => (bool) $d['is_active']) !== 
                     <?php endif ?>
 
                     <?php if ($d['notes']): ?><p class="small soft" style="white-space:pre-line"><?= e($d['notes']) ?></p><?php endif ?>
+
+                    <a href="/admin/dietas/<?= (int) $d['id'] ?>/montar" class="btn btn-outline btn-sm" style="align-self:flex-start">
+                        <?= icon('utensils', '', 16) ?><span><?= (int) $d['meal_count'] > 0 ? 'Editar refeições' : 'Montar refeições' ?></span>
+                    </a>
                 </article>
 
                 <dialog class="modal" id="edit-diet-<?= (int) $d['id'] ?>">

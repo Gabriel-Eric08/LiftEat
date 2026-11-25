@@ -74,6 +74,8 @@ return static function (Router $router): void {
         $r->post('/alunos/{id}/dietas', [Admin\DietController::class, 'store']);
         $r->post('/dietas/{id}', [Admin\DietController::class, 'update']);
         $r->post('/dietas/{id}/ativar', [Admin\DietController::class, 'activate']);
+        $r->get('/dietas/{id}/montar', [Admin\DietController::class, 'builder']);
+        $r->post('/dietas/{id}/refeicoes', [Admin\DietController::class, 'saveMeals']);
         $r->post('/dietas/{id}/excluir', [Admin\DietController::class, 'destroy']);
 
         $r->get('/perfil', [Admin\ProfileController::class, 'show']);

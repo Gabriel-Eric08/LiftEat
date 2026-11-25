@@ -9,6 +9,7 @@ use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
+use App\Services\DietMeals;
 use App\Services\DietPlans;
 
 /**
@@ -83,6 +84,45 @@ final class DietController
         Session::flash('success', "{$plan['name']} agora é o plano ativo. Os outros planos do aluno foram desativados.");
 
         return $this->back((int) $plan['student_id']);
+    }
+
+    /** Montador de refeições, opções e alimentos do plano. */
+    public function builder(Request $request, string $id): Response
+    {
+        $plan = $this->plan((int) $id);
+        $student = $this->student((int) $plan['student_id']);
+
+        return view('admin/diets/builder', [
+            'title'       => $plan['name'],
+            'breadcrumbs' => ['Alunos' => '/admin/alunos', $student['name'] => "/admin/alunos/{$student['id']}?aba=dieta", 'Montar refeições' => null],
+            'plan'        => $plan,
+            'student'     => $student,
+            'meals'       => DietMeals::tree((int) $plan['id']),
+            'scripts'     => [asset('assets/js/diet-builder.js')],
+        ], 'layouts/admin');
+    }
+
+    public function saveMeals(Request $request, string $id): Response
+    {
+        $plan = $this->plan((int) $id);
+        $back = "/admin/dietas/{$plan['id']}/montar";
+        $raw = json_decode((string) $request->input('meals', ''), true);
+
+        [$meals, $errors] = DietMeals::validate($raw);
+
+        if ($errors !== []) {
+            Session::flash('error', implode(' ', array_slice($errors, 0, 3)) . (count($errors) > 3 ? ' (e mais ' . (count($errors) - 3) . ')' : ''));
+            if (is_array($raw)) {
+                Session::flash('diet_draft', $raw);
+            }
+
+            return redirect($back);
+        }
+
+        DietMeals::save((int) $plan['id'], $meals);
+        Session::flash('success', 'Refeições salvas.' . ($plan['is_active'] ? ' O aluno já vê no app.' : ''));
+
+        return redirect($request->input('after') === 'aluno' ? "/admin/alunos/{$plan['student_id']}?aba=dieta" : $back);
     }
 
     public function destroy(Request $request, string $id): Response

@@ -52,7 +52,7 @@ use App\Core\View;
                         </td>
                         <td class="hide-sm small muted num"><?= $macros ? e(implode(' · ', $macros)) : '—' ?></td>
                         <td class="hide-sm small muted"><?= (int) $p['meal_count'] ?></td>
-                        <td class="actions"><a href="/admin/alunos/<?= (int) $p['student_id'] ?>?aba=dieta" class="btn btn-ghost btn-icon btn-sm" aria-label="Abrir"><?= icon('chevron-right', '', 16) ?></a></td>
+                        <td class="actions"><a href="/admin/dietas/<?= (int) $p['id'] ?>/montar" class="btn btn-ghost btn-icon btn-sm" title="Refeições" aria-label="Refeições"><?= icon('utensils', '', 16) ?></a><a href="/admin/alunos/<?= (int) $p['student_id'] ?>?aba=dieta" class="btn btn-ghost btn-icon btn-sm" aria-label="Abrir"><?= icon('chevron-right', '', 16) ?></a></td>
                     </tr>
                 <?php endforeach ?>
                 </tbody>

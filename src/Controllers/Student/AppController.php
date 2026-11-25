@@ -11,6 +11,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Services\DietMeals;
 use App\Services\Workouts;
 
 /**
@@ -260,33 +261,8 @@ final class AppController
             return null;
         }
 
-        $meals = Database::select(
-            'SELECT * FROM diet_meals WHERE diet_plan_id = ? ORDER BY meal_time IS NULL, meal_time, position, id',
-            [$plan['id']],
-        );
-        $mealIds = array_column($meals, 'id') ?: [0];
-        $in = implode(',', array_map('intval', $mealIds));
-
-        $options = Database::select("SELECT * FROM diet_meal_options WHERE meal_id IN ({$in}) ORDER BY position, id");
-        $optionIds = array_column($options, 'id') ?: [0];
-        $inOpt = implode(',', array_map('intval', $optionIds));
-        $items = Database::select("SELECT * FROM diet_meal_items WHERE option_id IN ({$inOpt}) ORDER BY position, id");
-
-        $itemsByOption = [];
-        foreach ($items as $item) {
-            $itemsByOption[$item['option_id']][] = $item;
-        }
-        $optionsByMeal = [];
-        foreach ($options as $opt) {
-            $opt['items'] = $itemsByOption[$opt['id']] ?? [];
-            $optionsByMeal[$opt['meal_id']][] = $opt;
-        }
-        foreach ($meals as &$meal) {
-            $meal['options'] = $optionsByMeal[$meal['id']] ?? [];
-        }
-        unset($meal);
-
-        $plan['meals'] = $meals;
+        // Na ordem definida pelo personal no montador do plano.
+        $plan['meals'] = DietMeals::tree((int) $plan['id']);
 
         return $plan;
     }
