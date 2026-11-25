@@ -142,7 +142,7 @@ $statusLabels = ['paid' => ['Pago', 'success'], 'pending' => ['Pendente', 'warni
     </div>
 
     <div class="tab-panel" data-panel="dieta">
-        <?= View::partial('empty', ['icon' => 'salad', 'heading' => 'Plano alimentar chegando', 'text' => 'Em breve você monta as refeições e opções de ' . first_name($student['name']) . ' aqui.']) ?>
+        <?= View::render('admin/students/_diets', compact('student', 'diets')) ?>
     </div>
 </section>
 

@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\Billing;
+use App\Services\DietPlans;
 use App\Services\Workouts;
 
 final class StudentController
@@ -184,6 +185,7 @@ final class StudentController
         return view('admin/students/show', [
             'workouts'    => Workouts::forStudent((int) $student['id']),
             'schedule'    => Workouts::schedule((int) $student['id']),
+            'diets'       => DietPlans::forStudent((int) $student['id']),
             'sessions'    => $sessions,
             'templates'   => $templates,
             'title'       => $student['name'],

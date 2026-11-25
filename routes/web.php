@@ -70,7 +70,11 @@ return static function (Router $router): void {
         $r->post('/exercicios/{id}/status', [Admin\ExerciseController::class, 'toggle']);
         $r->post('/exercicios/{id}/excluir', [Admin\ExerciseController::class, 'destroy']);
 
-        $r->get('/dietas', [Admin\ComingSoonController::class, 'show']);
+        $r->get('/dietas', [Admin\DietController::class, 'index']);
+        $r->post('/alunos/{id}/dietas', [Admin\DietController::class, 'store']);
+        $r->post('/dietas/{id}', [Admin\DietController::class, 'update']);
+        $r->post('/dietas/{id}/ativar', [Admin\DietController::class, 'activate']);
+        $r->post('/dietas/{id}/excluir', [Admin\DietController::class, 'destroy']);
 
         $r->get('/perfil', [Admin\ProfileController::class, 'show']);
         $r->post('/perfil', [Admin\ProfileController::class, 'update']);

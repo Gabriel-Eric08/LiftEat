@@ -19,7 +19,7 @@ $nav = [
         ['/admin/perfil', 'user', 'Pessoal', false],
     ],
 ];
-$soon = ['/admin/dietas'];
+$soon = [];
 ?>
 <!doctype html>
 <html lang="pt-BR" data-theme="<?= theme() ?>">
