@@ -100,6 +100,10 @@ return static function (Router $router): void {
             $r->post('/dieta/feito', [Student\DietController::class, 'check']);
             $r->post('/dieta/desfazer', [Student\DietController::class, 'uncheck']);
             $r->get('/historico', [Student\AppController::class, 'history']);
+            $r->get('/evolucao', [Student\EvolutionController::class, 'index']);
+            $r->post('/evolucao', [Student\EvolutionController::class, 'store']);
+            $r->post('/evolucao/{id}', [Student\EvolutionController::class, 'update']);
+            $r->post('/evolucao/{id}/excluir', [Student\EvolutionController::class, 'destroy']);
             $r->get('/perfil', [Student\AppController::class, 'profile']);
             $r->post('/perfil/senha', [Student\AppController::class, 'password']);
 

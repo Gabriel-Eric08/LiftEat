@@ -11,6 +11,7 @@ use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
 use App\Services\Billing;
+use App\Services\BodyMeasurements;
 use App\Services\DietAdherence;
 use App\Services\DietPlans;
 use App\Services\Workouts;
@@ -197,6 +198,7 @@ final class StudentController
             'schedule'    => Workouts::schedule((int) $student['id']),
             'diets'       => $diets,
             'adherence'   => $adherence[(int) $student['id']] ?? null,
+            'measurements' => BodyMeasurements::forStudent((int) $student['id']),
             'sessions'    => $sessions,
             'templates'   => $templates,
             'title'       => $student['name'],

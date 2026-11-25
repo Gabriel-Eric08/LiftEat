@@ -21,12 +21,17 @@ $sit = student_situation($student);
         <dt>Renovação</dt><dd><?= $student['auto_renew'] ? 'Automática' : 'Manual' ?></dd>
         <?php if ($student['goal']): ?><dt>Objetivo</dt><dd><?= e($student['goal']) ?></dd><?php endif ?>
         <?php if ($student['height_cm']): ?><dt>Altura</dt><dd><?= (int) $student['height_cm'] ?> cm</dd><?php endif ?>
-        <?php if ($student['weight_kg']): ?><dt>Peso</dt><dd><?= e(number_format((float) $student['weight_kg'], 1, ',', '')) ?> kg</dd><?php endif ?>
+        <?php if ($student['weight_kg']): ?><dt>Peso</dt><dd><?= e(number_format((float) $student['weight_kg'], 1, ',', '')) ?> kg <a href="/app/evolucao" class="xsmall text-primary">atualizar</a></dd><?php endif ?>
     </dl>
 </section>
 
 <section class="card reveal" style="--i:2;padding:6px 16px">
     <div class="list">
+        <a href="/app/evolucao" class="list-item" style="color:inherit;text-decoration:none">
+            <span class="stat-icon"><?= icon('activity', '', 18) ?></span>
+            <span class="grow small bold">Evolução: peso e medidas</span>
+            <?= icon('chevron-right', 'muted', 18) ?>
+        </a>
         <div class="list-item">
             <span class="stat-icon"><?= icon('moon', '', 18) ?></span>
             <span class="grow small bold">Tema escuro</span>

@@ -66,6 +66,7 @@ $statusLabels = ['paid' => ['Pago', 'success'], 'pending' => ['Pendente', 'warni
         <button class="tab" data-tab="financeiro"><?= icon('wallet', '', 16) ?>Financeiro</button>
         <button class="tab" data-tab="treinos"><?= icon('dumbbell', '', 16) ?>Treinos</button>
         <button class="tab" data-tab="dieta"><?= icon('salad', '', 16) ?>Dieta</button>
+        <button class="tab" data-tab="evolucao"><?= icon('activity', '', 16) ?>Evolução</button>
     </nav>
 
     <div class="tab-panel" data-panel="geral" style="padding-top:20px">
@@ -143,6 +144,10 @@ $statusLabels = ['paid' => ['Pago', 'success'], 'pending' => ['Pendente', 'warni
 
     <div class="tab-panel" data-panel="dieta">
         <?= View::render('admin/students/_diets', compact('student', 'diets', 'adherence')) ?>
+    </div>
+
+    <div class="tab-panel" data-panel="evolucao">
+        <?= View::render('admin/students/_evolution', compact('student', 'measurements')) ?>
     </div>
 </section>
 
