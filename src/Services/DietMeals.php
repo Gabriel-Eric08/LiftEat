@@ -179,6 +179,31 @@ final class DietMeals
         return $tree;
     }
 
+    /**
+     * Converte a árvore do banco (tree()) no formato de entrada de validate(),
+     * para copiar as refeições de um plano para outro com as mesmas regras.
+     *
+     * @param list<array<string, mixed>> $tree
+     * @return list<array<string, mixed>>
+     */
+    public static function toInput(array $tree): array
+    {
+        return array_map(static fn (array $m) => [
+            'name'      => (string) $m['name'],
+            'meal_time' => $m['meal_time'] === null ? '' : substr((string) $m['meal_time'], 0, 5),
+            'notes'     => (string) ($m['notes'] ?? ''),
+            'options'   => array_map(static fn (array $o) => [
+                'name'  => (string) $o['name'],
+                'notes' => (string) ($o['notes'] ?? ''),
+                'items' => array_map(static fn (array $i) => [
+                    'food'     => (string) $i['food'],
+                    'quantity' => (string) $i['quantity'],
+                    'notes'    => (string) ($i['notes'] ?? ''),
+                ], $o['items'] ?? []),
+            ], $m['options'] ?? []),
+        ], $tree);
+    }
+
     /** Aceita "7:30", "07:30" e "07:30:00"; devolve "HH:MM:00" ou null. */
     public static function time(string $value): ?string
     {

@@ -283,4 +283,47 @@ final class DietMealsTest extends TestCase
 
         self::assertSame([], $tree[0]['options']);
     }
+
+    /* ---------------- toInput() (cópia de plano) ---------------- */
+
+    public function testArvoreDoBancoVoltaIdenticaDepoisDeValidar(): void
+    {
+        $tree = DietMeals::assemble(
+            [
+                ['id' => 1, 'name' => 'Café da manhã', 'meal_time' => '07:30:00', 'notes' => null],
+                ['id' => 2, 'name' => 'Ceia', 'meal_time' => null, 'notes' => 'opcional'],
+            ],
+            [
+                ['id' => 10, 'meal_id' => 1, 'name' => 'Salgada', 'notes' => null],
+                ['id' => 11, 'meal_id' => 1, 'name' => 'Doce', 'notes' => 'fim de semana'],
+                ['id' => 12, 'meal_id' => 2, 'name' => 'Opção 1', 'notes' => null],
+            ],
+            [
+                ['id' => 100, 'option_id' => 10, 'food' => 'Ovo', 'quantity' => '2 unidades', 'notes' => null],
+                ['id' => 101, 'option_id' => 11, 'food' => 'Aveia', 'quantity' => '40 g', 'notes' => 'com mel'],
+            ],
+        );
+
+        [$meals, $errors] = DietMeals::validate(DietMeals::toInput($tree));
+
+        self::assertSame([], $errors);
+        self::assertSame([
+            [
+                'name' => 'Café da manhã', 'meal_time' => '07:30:00', 'notes' => null,
+                'options' => [
+                    ['name' => 'Salgada', 'notes' => null, 'items' => [['food' => 'Ovo', 'quantity' => '2 unidades', 'notes' => null]]],
+                    ['name' => 'Doce', 'notes' => 'fim de semana', 'items' => [['food' => 'Aveia', 'quantity' => '40 g', 'notes' => 'com mel']]],
+                ],
+            ],
+            [
+                'name' => 'Ceia', 'meal_time' => null, 'notes' => 'opcional',
+                'options' => [['name' => 'Opção 1', 'notes' => null, 'items' => []]],
+            ],
+        ], $meals);
+    }
+
+    public function testPlanoSemRefeicoesViraListaVazia(): void
+    {
+        self::assertSame([], DietMeals::toInput([]));
+    }
 }

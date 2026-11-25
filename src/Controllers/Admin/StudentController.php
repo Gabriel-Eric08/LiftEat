@@ -198,6 +198,8 @@ final class StudentController
             'workouts'    => Workouts::forStudent((int) $student['id']),
             'schedule'    => Workouts::schedule((int) $student['id']),
             'diets'       => $diets,
+            'dietTemplates' => DietPlans::all(),
+            'dietStudents'  => DietController::studentOptions(),
             'adherence'   => $adherence[(int) $student['id']] ?? null,
             'measurements' => $measurements = BodyMeasurements::forStudent((int) $student['id']),
             'charts'       => ProgressCharts::forStudent((int) $student['id'], $measurements ?? [], $request->query('exercicio')),

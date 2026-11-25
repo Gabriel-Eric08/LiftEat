@@ -68,13 +68,36 @@ final class DietController
         }
 
         $activate = DietPlans::shouldActivate($request->boolean('activate'), DietPlans::hasActive((int) $student['id']));
-        DietPlans::create((int) $student['id'], $data, $activate);
+        $newId = DietPlans::create((int) $student['id'], $data, $activate);
 
-        Session::flash('success', $activate
+        // "Começar a partir de": copia as refeições de um plano existente.
+        $templateId = (int) $request->input('template_id', 0);
+        $template = $templateId > 0 ? DietPlans::find($templateId) : null;
+        if ($template !== null) {
+            DietPlans::copyMeals((int) $template['id'], $newId);
+        }
+
+        Session::flash('success', ($activate
             ? 'Plano criado e ativo. ' . first_name($student['name']) . ' já vê no app.'
-            : 'Plano criado. Ative quando quiser que ' . first_name($student['name']) . ' veja no app.');
+            : 'Plano criado. Ative quando quiser que ' . first_name($student['name']) . ' veja no app.')
+            . ($template !== null ? ' Refeições copiadas de ' . $template['name'] . '.' : ''));
 
-        return $this->back((int) $student['id']);
+        return $template !== null ? redirect("/admin/dietas/{$newId}/montar") : $this->back((int) $student['id']);
+    }
+
+    /** Duplica no mesmo aluno ou copia para outro, e abre o montador da cópia. */
+    public function duplicate(Request $request, string $id): Response
+    {
+        $plan = $this->plan((int) $id);
+        $target = $this->student((int) $request->input('student_id', $plan['student_id']));
+        $same = (int) $target['id'] === (int) $plan['student_id'];
+
+        [$newId, $active] = DietPlans::duplicate((int) $plan['id'], (int) $target['id']);
+
+        Session::flash('success', ($same ? 'Plano duplicado.' : 'Plano copiado para ' . first_name($target['name']) . '.')
+            . ($active ? ' A cópia já está ativa no app.' : ' A cópia está inativa; ative quando quiser.'));
+
+        return redirect("/admin/dietas/{$newId}/montar");
     }
 
     public function update(Request $request, string $id): Response
@@ -113,6 +136,7 @@ final class DietController
             'plan'        => $plan,
             'student'     => $student,
             'meals'       => DietMeals::tree((int) $plan['id']),
+            'students'    => self::studentOptions(),
             'scripts'     => [asset('assets/js/diet-builder.js')],
         ], 'layouts/admin');
     }
@@ -150,6 +174,16 @@ final class DietController
             : "{$plan['name']} excluído.");
 
         return $this->back((int) $plan['student_id']);
+    }
+
+    /**
+     * Alunos que podem receber uma cópia de plano.
+     *
+     * @return list<array{id: int|string, name: string}>
+     */
+    public static function studentOptions(): array
+    {
+        return Database::select('SELECT id, name FROM students WHERE deleted_at IS NULL ORDER BY name');
     }
 
     /** @param list<string> $errors */

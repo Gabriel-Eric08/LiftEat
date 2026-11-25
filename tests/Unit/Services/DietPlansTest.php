@@ -165,4 +165,49 @@ final class DietPlansTest extends TestCase
         self::assertSame([], DietPlans::idsToDeactivate([], 1));
         self::assertSame([], DietPlans::idsToDeactivate([['id' => 2, 'is_active' => 0]], 1));
     }
+
+    /* ---------------- cópia ---------------- */
+
+    public function testCopiaNoMesmoAlunoGanhaSufixo(): void
+    {
+        self::assertSame('Cutting (cópia)', DietPlans::copyName('Cutting', true));
+    }
+
+    public function testCopiaParaOutroAlunoMantemONome(): void
+    {
+        self::assertSame('Cutting', DietPlans::copyName('Cutting', false));
+    }
+
+    public function testNomeDaCopiaRespeitaOLimite(): void
+    {
+        $name = DietPlans::copyName(str_repeat('ã', DietPlans::NAME_MAX), true);
+
+        self::assertSame(DietPlans::NAME_MAX, mb_strlen($name));
+        self::assertStringEndsWith(' (cópia)', $name);
+        [, $errors] = DietPlans::validate(['name' => $name]);
+        self::assertSame([], $errors);
+    }
+
+    public function testDadosDaCopiaPassamNaValidacao(): void
+    {
+        $plan = [
+            'id' => 4, 'student_id' => 1, 'name' => 'Bulking', 'notes' => '', 'is_active' => 1,
+            'target_kcal' => '3000', 'target_protein_g' => '180', 'target_carbs_g' => null, 'target_fat_g' => '90',
+        ];
+
+        $data = DietPlans::copyData($plan, 'Bulking (cópia)');
+        [$validated, $errors] = DietPlans::validate(array_map(static fn ($v) => $v === null ? '' : (string) $v, $data));
+
+        self::assertSame([], $errors);
+        self::assertSame($validated, $data);
+        self::assertNull($data['notes']);
+        self::assertSame(3000, $data['target_kcal']);
+    }
+
+    public function testCopiaEntraAtivaSoSeODestinoNaoTemPlanoAtivo(): void
+    {
+        // Mesma regra da criação: a cópia nunca pede ativação.
+        self::assertTrue(DietPlans::shouldActivate(false, false));
+        self::assertFalse(DietPlans::shouldActivate(false, true));
+    }
 }

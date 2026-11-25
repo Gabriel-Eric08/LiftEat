@@ -99,9 +99,67 @@ final class DietPlans
         return $ids;
     }
 
+    /**
+     * Nome da cópia: no mesmo aluno ganha " (cópia)"; para outro aluno
+     * mantém o nome. Sempre dentro do limite de caracteres.
+     */
+    public static function copyName(string $name, bool $sameStudent): string
+    {
+        if (!$sameStudent) {
+            return mb_substr($name, 0, self::NAME_MAX);
+        }
+
+        $suffix = ' (cópia)';
+
+        return mb_substr($name, 0, self::NAME_MAX - mb_strlen($suffix)) . $suffix;
+    }
+
+    /**
+     * Dados do plano de origem no formato de validate(), para a cópia.
+     *
+     * @param array<string, mixed> $plan
+     * @return array<string, mixed>
+     */
+    public static function copyData(array $plan, string $name): array
+    {
+        $data = ['name' => $name, 'notes' => $plan['notes'] === null || $plan['notes'] === '' ? null : (string) $plan['notes']];
+        foreach (array_keys(self::TARGETS) as $field) {
+            $data[$field] = $plan[$field] === null ? null : (int) $plan[$field];
+        }
+
+        return $data;
+    }
+
     /* ------------------------------------------------------------------ */
     /* Consultas (dependem do banco; regras acima são testadas sem ele)    */
     /* ------------------------------------------------------------------ */
+
+    /**
+     * Copia o plano (dados, refeições, opções e alimentos) para um aluno.
+     * A cópia só fica ativa se o aluno destino não tiver plano ativo.
+     *
+     * @return array{0: int, 1: bool} [id da cópia, ficou ativa]
+     */
+    public static function duplicate(int $planId, int $targetStudentId, ?string $name = null): array
+    {
+        $plan = self::find($planId) ?? throw new \RuntimeException("Plano {$planId} não encontrado.");
+        $name ??= self::copyName((string) $plan['name'], (int) $plan['student_id'] === $targetStudentId);
+
+        $activate = self::shouldActivate(false, self::hasActive($targetStudentId));
+        $newId = self::create($targetStudentId, self::copyData($plan, $name), $activate);
+        self::copyMeals($planId, $newId);
+
+        return [$newId, $activate];
+    }
+
+    /** Copia as refeições de um plano para outro, passando pela validação do montador. */
+    public static function copyMeals(int $fromPlanId, int $toPlanId): void
+    {
+        [$meals] = DietMeals::validate(DietMeals::toInput(DietMeals::tree($fromPlanId)));
+        if ($meals !== []) {
+            DietMeals::save($toPlanId, $meals);
+        }
+    }
 
     /** @return array<string, mixed>|null */
     public static function find(int $planId): ?array

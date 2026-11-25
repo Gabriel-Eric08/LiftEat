@@ -5,6 +5,8 @@ use App\Core\View;
 $first = e(first_name($student['name']));
 $hasActive = array_filter($diets, static fn ($d) => (bool) $d['is_active']) !== [];
 $adherence ??= null;
+$dietTemplates ??= [];   // todos os planos (para "Começar a partir de")
+$dietStudents ??= [];    // alunos que podem receber uma cópia
 $tone = static fn (?int $p): string => $p === null ? 'neutral' : ($p >= 80 ? 'success' : ($p >= 50 ? 'warning' : 'danger'));
 ?>
 <div class="stack" style="--gap:12px;padding-top:20px">
@@ -82,6 +84,9 @@ $tone = static fn (?int $p): string => $p === null ? 'neutral' : ($p >= 80 ? 'su
                                 </form>
                             <?php endif ?>
                             <button type="button" class="btn btn-ghost btn-icon btn-sm" data-open="edit-diet-<?= (int) $d['id'] ?>" title="Editar" aria-label="Editar"><?= icon('pencil', '', 16) ?></button>
+                            <?php if ($dietStudents): ?>
+                                <button type="button" class="btn btn-ghost btn-icon btn-sm" data-open="duplicate-diet-<?= (int) $d['id'] ?>" title="Duplicar / copiar para aluno" aria-label="Duplicar"><?= icon('repeat', '', 16) ?></button>
+                            <?php endif ?>
                             <form method="post" action="/admin/dietas/<?= (int) $d['id'] ?>/excluir"
                                   data-confirm="<?= e($d['name']) ?> e todas as refeições dele serão excluídos.<?= $d['is_active'] ? ' ' . $first . ' fica sem plano no app até você ativar outro.' : '' ?>" data-confirm-label="Excluir plano">
                                 <?= csrf_field() ?>
@@ -107,6 +112,8 @@ $tone = static fn (?int $p): string => $p === null ? 'neutral' : ($p >= 80 ? 'su
                         <?= icon('utensils', '', 16) ?><span><?= (int) $d['meal_count'] > 0 ? 'Editar refeições' : 'Montar refeições' ?></span>
                     </a>
                 </article>
+
+                <?php if ($dietStudents): ?><?= View::render('admin/diets/_duplicate-modal', ['plan' => $d, 'students' => $dietStudents]) ?><?php endif ?>
 
                 <dialog class="modal" id="edit-diet-<?= (int) $d['id'] ?>">
                     <form method="post" action="/admin/dietas/<?= (int) $d['id'] ?>">
@@ -138,6 +145,22 @@ $tone = static fn (?int $p): string => $p === null ? 'neutral' : ($p >= 80 ? 'su
         </div>
         <div class="modal-body stack">
             <?= View::render('admin/diets/_fields', ['prefix' => 'nd']) ?>
+            <?php if ($dietTemplates): ?>
+                <div class="field">
+                    <label class="label" for="nd-template">Começar a partir de</label>
+                    <select class="select" id="nd-template" name="template_id">
+                        <option value="">Plano em branco</option>
+                        <?php $lastStudent = null; foreach ($dietTemplates as $t): ?>
+                            <?php if ($lastStudent !== $t['student_name']): ?>
+                                <?= $lastStudent !== null ? '</optgroup>' : '' ?><optgroup label="<?= e($t['student_name']) ?>">
+                                <?php $lastStudent = $t['student_name']; endif ?>
+                            <option value="<?= (int) $t['id'] ?>"><?= e($t['name']) ?> (<?= (int) $t['meal_count'] ?> <?= (int) $t['meal_count'] === 1 ? 'refeição' : 'refeições' ?>)</option>
+                        <?php endforeach ?>
+                        <?= $lastStudent !== null ? '</optgroup>' : '' ?>
+                    </select>
+                    <span class="hint">Copia as refeições, opções e alimentos de um plano que você já montou. Nome e metas vêm deste formulário.</span>
+                </div>
+            <?php endif ?>
             <?php if ($hasActive): ?>
                 <label class="switch">
                     <input type="checkbox" name="activate" value="1">

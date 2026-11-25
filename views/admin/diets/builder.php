@@ -78,8 +78,16 @@ $targets = array_filter([
         </div>
 
         <p class="xsmall muted reveal" style="--i:3">O aluno vê as refeições nesta ordem. Com mais de uma opção, ele escolhe qual seguir.</p>
+
+        <section class="card stack reveal" style="--i:4;padding:16px;--gap:10px">
+            <span class="label">Mais ações</span>
+            <button type="button" class="btn btn-outline btn-sm btn-block" data-open="duplicate-diet-<?= (int) $plan['id'] ?>"><?= icon('repeat', '', 16) ?><span>Duplicar / copiar para aluno</span></button>
+            <span class="xsmall muted">Salve antes de duplicar: a cópia leva as refeições já salvas.</span>
+        </section>
     </aside>
 </form>
+
+<?= \App\Core\View::render('admin/diets/_duplicate-modal', ['plan' => $plan, 'students' => $students ?? []]) ?>
 
 <template id="meal-template">
     <article class="card ex-row stack" style="--gap:12px">
