@@ -93,8 +93,15 @@ $daysLeft = (int) (new DateTimeImmutable('today'))->diff(new DateTimeImmutable($
 
 <!-- Próxima refeição -->
 <section class="stack reveal" style="--i:4;--gap:12px">
-    <div class="section-title"><h2>Próxima refeição</h2><a href="/app/dieta">Ver dieta</a></div>
-    <?php if ($nextMeal === null): ?>
+    <div class="section-title">
+        <h2>Próxima refeição</h2>
+        <a href="/app/dieta"><?= $dietProgress && $dietProgress['total'] > 0 ? $dietProgress['done'] . ' de ' . $dietProgress['total'] . ' hoje' : 'Ver dieta' ?></a>
+    </div>
+    <?php if ($nextMeal === null && $hasDiet): ?>
+        <div class="card">
+            <?= View::partial('empty', ['icon' => 'check', 'heading' => 'Dieta de hoje completa', 'text' => 'Você marcou todas as refeições do plano. Mandou bem!']) ?>
+        </div>
+    <?php elseif ($nextMeal === null): ?>
         <div class="card">
             <?= View::partial('empty', ['icon' => 'utensils', 'heading' => 'Sem plano alimentar ainda', 'text' => 'Quando seu personal montar sua dieta, a próxima refeição aparece aqui.']) ?>
         </div>
@@ -119,5 +126,13 @@ $daysLeft = (int) (new DateTimeImmutable('today'))->diff(new DateTimeImmutable($
                 </div>
             <?php endif ?>
         </a>
+        <?php if ($dietProgress !== null && count($nextMeal['options']) <= 1): ?>
+            <form method="post" action="/app/dieta/feito">
+                <?= csrf_field() ?>
+                <input type="hidden" name="meal" value="<?= e($nextMeal['name']) ?>">
+                <input type="hidden" name="from" value="home">
+                <button class="btn btn-soft btn-block"><?= icon('check', '', 16) ?><span>Marcar <?= e(mb_strtolower($nextMeal['name'])) ?> como feito</span></button>
+            </form>
+        <?php endif ?>
     <?php endif ?>
 </section>

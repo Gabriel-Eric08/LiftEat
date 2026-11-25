@@ -40,6 +40,7 @@ final class DietMeals
 
         $errors = [];
         $meals = [];
+        $seenNames = [];
 
         if (count($raw) > self::MAX_MEALS) {
             $errors[] = 'O plano pode ter no máximo ' . self::MAX_MEALS . ' refeições.';
@@ -56,6 +57,12 @@ final class DietMeals
                 $errors[] = "{$label}: nome com no máximo " . self::MEAL_NAME_MAX . ' caracteres.';
             } else {
                 $label = $name;
+                // O check-in da dieta identifica a refeição pelo nome.
+                $key = DietCheckins::key($name);
+                if (isset($seenNames[$key])) {
+                    $errors[] = "Há duas refeições chamadas {$name}. Use nomes diferentes (ex.: Lanche da manhã e Lanche da tarde).";
+                }
+                $seenNames[$key] = true;
             }
 
             $time = self::text($meal['meal_time'] ?? '');

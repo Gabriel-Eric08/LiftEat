@@ -97,6 +97,8 @@ return static function (Router $router): void {
             $r->get('', [Student\AppController::class, 'home']);
             $r->get('/treinos', [Student\AppController::class, 'workouts']);
             $r->get('/dieta', [Student\AppController::class, 'diet']);
+            $r->post('/dieta/feito', [Student\DietController::class, 'check']);
+            $r->post('/dieta/desfazer', [Student\DietController::class, 'uncheck']);
             $r->get('/historico', [Student\AppController::class, 'history']);
             $r->get('/perfil', [Student\AppController::class, 'profile']);
             $r->post('/perfil/senha', [Student\AppController::class, 'password']);

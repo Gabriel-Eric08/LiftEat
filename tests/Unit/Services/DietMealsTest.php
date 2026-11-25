@@ -178,11 +178,33 @@ final class DietMealsTest extends TestCase
 
     public function testMaximoDeRefeicoes(): void
     {
-        $raw = array_fill(0, DietMeals::MAX_MEALS + 1, self::meal());
+        $raw = array_map(static fn ($n) => self::meal(['name' => "Refeição {$n}"]), range(1, DietMeals::MAX_MEALS + 1));
         [$meals, $errors] = DietMeals::validate($raw);
 
         self::assertCount(DietMeals::MAX_MEALS, $meals);
         self::assertSame(['O plano pode ter no máximo ' . DietMeals::MAX_MEALS . ' refeições.'], $errors);
+    }
+
+    public function testNomesDeRefeicaoRepetidosSaoRecusados(): void
+    {
+        [, $errors] = DietMeals::validate([
+            self::meal(['name' => 'Lanche']),
+            self::meal(['name' => 'Almoço']),
+            self::meal(['name' => '  lanche ']),
+        ]);
+
+        self::assertCount(1, $errors);
+        self::assertStringContainsString('duas refeições chamadas lanche', $errors[0]);
+    }
+
+    public function testNomesParecidosMasDiferentesSaoAceitos(): void
+    {
+        [, $errors] = DietMeals::validate([
+            self::meal(['name' => 'Lanche da manhã']),
+            self::meal(['name' => 'Lanche da tarde']),
+        ]);
+
+        self::assertSame([], $errors);
     }
 
     public function testMaximoDeOpcoesEAlimentos(): void

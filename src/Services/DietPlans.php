@@ -109,6 +109,15 @@ final class DietPlans
         return Database::select('SELECT * FROM diet_plans WHERE id = ?', [$planId])[0] ?? null;
     }
 
+    /** Plano ativo do aluno (sem as refeições), ou null. */
+    public static function activeFor(int $studentId): ?array
+    {
+        return Database::select(
+            'SELECT * FROM diet_plans WHERE student_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1',
+            [$studentId],
+        )[0] ?? null;
+    }
+
     /**
      * Planos do aluno, o ativo primeiro, com a quantidade de refeições.
      *

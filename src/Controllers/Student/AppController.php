@@ -11,7 +11,9 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Session;
 use App\Core\Validator;
+use App\Services\DietCheckins;
 use App\Services\DietMeals;
+use App\Services\DietPlans;
 use App\Services\Workouts;
 
 /**
@@ -45,15 +47,11 @@ final class AppController
 
         $plan = $this->activeDiet((int) $student['id']);
         $nextMeal = null;
+        $dietProgress = null;
         if ($plan !== null) {
-            $now = date('H:i:s');
-            foreach ($plan['meals'] as $meal) {
-                if ($meal['meal_time'] === null || $meal['meal_time'] >= $now) {
-                    $nextMeal = $meal;
-                    break;
-                }
-            }
-            $nextMeal ??= $plan['meals'][0] ?? null;
+            $logs = DietCheckins::forDay((int) $student['id'], date('Y-m-d'));
+            $dietProgress = $logs === null ? null : DietCheckins::progress($plan['meals'], $logs);
+            $nextMeal = DietCheckins::nextMeal($plan['meals'], date('H:i:s'), array_keys($dietProgress['byMeal'] ?? []));
         }
 
         return view('app/home', [
@@ -67,6 +65,8 @@ final class AppController
             'doneThisWeek' => $doneThisWeek,
             'monthCount'   => $monthCount,
             'nextMeal'     => $nextMeal,
+            'hasDiet'      => $plan !== null && $plan['meals'] !== [],
+            'dietProgress' => $dietProgress,
             'active'       => Workouts::activeSession((int) $student['id']),
         ], 'layouts/app');
     }
@@ -103,12 +103,17 @@ final class AppController
     public function diet(Request $request): Response
     {
         $student = Auth::student();
+        $plan = $this->activeDiet((int) $student['id']);
+
+        // null = check-in indisponível (migration ainda não aplicada).
+        $logs = $plan === null ? [] : DietCheckins::forDay((int) $student['id'], date('Y-m-d'));
 
         return view('app/diet', [
-            'title'   => 'Dieta',
-            'eyebrow' => 'Plano alimentar',
-            'heading' => 'Dieta',
-            'plan'    => $this->activeDiet((int) $student['id']),
+            'title'    => 'Dieta',
+            'eyebrow'  => 'Plano alimentar',
+            'heading'  => 'Dieta',
+            'plan'     => $plan,
+            'progress' => $plan === null || $logs === null ? null : DietCheckins::progress($plan['meals'], $logs),
         ], 'layouts/app');
     }
 
@@ -252,10 +257,7 @@ final class AppController
      */
     private function activeDiet(int $studentId): ?array
     {
-        $plan = Database::select(
-            'SELECT * FROM diet_plans WHERE student_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1',
-            [$studentId],
-        )[0] ?? null;
+        $plan = DietPlans::activeFor($studentId);
 
         if ($plan === null) {
             return null;
